@@ -16,6 +16,7 @@ enum GatewayOrphanGuard {
     static let payloadKey = "_localGatewayReadContext"
     private static let lock = NSRecursiveLock()
     private static var sequence: UInt64 = 0
+    private static var configurationRevisions: [Scope: [String: UInt64]] = [:]
     private static var revisions: [Scope: [String: UInt64]] = [:]
     private static var activityRevisions: [Scope: UInt64] = [:]
     private static var activities: [Scope: Int] = [:]
@@ -87,6 +88,22 @@ enum GatewayOrphanGuard {
             // cleaned; after that only a subsequently issued request may restore it.
             let epoch = context?["epoch"].flatMap(UInt64.init) ?? 0
             return epoch >= (revisions[scope]?[normalized(mac)] ?? 0)
+        }
+    }
+    /// The request epoch also protects locally committed configuration and upload receipts.
+    /// Unlike orphan removal, this only excludes the affected Gateway slice.
+    static func didChangeConfiguration(scope: Scope, mac: String) {
+        synchronized {
+            sequence += 1
+            configurationRevisions[scope, default: [:]][normalized(mac)] = sequence
+        }
+    }
+    static func allowsConfigurationImport(_ payload: [String: Any], scope: Scope, mac: String) -> Bool {
+        synchronized {
+            guard allowsImport(payload, scope: scope, mac: mac) else { return false }
+            guard let context = payload[payloadKey] as? [String: String] else { return true }
+            let epoch = context["epoch"].flatMap(UInt64.init) ?? 0
+            return epoch >= (configurationRevisions[scope]?[normalized(mac)] ?? 0)
         }
     }
     static func acceptsSnapshot(_ payload: [String: Any], scope: Scope) -> Bool {

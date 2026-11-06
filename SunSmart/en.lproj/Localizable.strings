@@ -2677,7 +2677,7 @@
 // Daylight saving time hint
 "site_dst_title" = "Daylight Saving Time · Auto";
 "site_dst_active" = "Active";
-"site_dst_inactive" = "Unactive";
+"site_dst_inactive" = "Inactive";
 "site_dst_current_offset" = "Current offset";
 "site_dst_next_switch" = "Next switch";
 "site_dst_switches_to" = "Switches to";
@@ -2690,3 +2690,5 @@
 "site_dst_without_gateway_help" = "The app synchronizes timezone and DST settings directly to mesh nodes via Bluetooth. Open each Space and connect to its devices at least once to ensure all nodes receive the update. Nodes not yet synchronized will retain their previous settings.";
 "site_dst_next_with_gateway_help" = "With gateway: The gateway synchronizes the next scheduled DST transition to mesh nodes. Nodes switch automatically at the scheduled time. The next transition is synchronized in advance to keep future DST changes up to date.";
 "site_dst_next_without_gateway_help" = "Without gateway: After each DST transition, toggle the DST setting again and revisit all Spaces to update the next scheduled transition in the nodes.";
+
+"gateway_sync_configuration_changed" = "Gateway configuration changed. Reopen the Gateway page and retry.";

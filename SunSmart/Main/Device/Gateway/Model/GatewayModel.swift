@@ -212,6 +212,8 @@ class GatewayModel: Copyable, Equatable {
     
     func copy() -> Self {
         let model = GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo, serverDeletionPendingLocalReset: self.serverDeletionPendingLocalReset)
+        model.lastUploadCloudTimestamp = lastUploadCloudTimestamp
+        model.syncCloudError = syncCloudError
         model.registrationProtectionSnapshot = registrationProtectionSnapshot
         model.orphanPersistenceToken = orphanPersistenceToken
         return model as! Self
@@ -239,6 +241,29 @@ class GatewayModel: Copyable, Equatable {
         self.mqttServerInfo = gatewayModel.mqttServerInfo
     }
     
+    /// Commit desired configuration before any refresh or Mesh work can observe it.
+    @discardableResult func commitConfiguration(_ desired: GatewayModel) -> Bool {
+        GatewayDeletionContext.lockImport()
+        defer { GatewayDeletionContext.unlockImport() }
+        guard isCurrentPersistenceContext, desired.siteId == siteId, desired.mac == mac,
+              let current = GatewayModel.load(siteId: siteId, macAddress: mac).first,
+              !current.serverDeletionPendingLocalReset else { return false }
+        let previous = copy()
+        update(gatewayModel: desired)
+        lastUploadCloudTimestamp = current.lastUploadCloudTimestamp
+        lastUpdate = GatewayCloudSyncGenerationPolicy.next(
+            now: Int64(Date().timeIntervalSince1970),
+            current: max(lastUpdate, current.lastUpdate), uploaded: current.lastUploadCloudTimestamp
+        )
+        guard save() else {
+            update(gatewayModel: previous)
+            lastUpdate = previous.lastUpdate
+            lastUploadCloudTimestamp = previous.lastUploadCloudTimestamp
+            return false
+        }
+        return true
+    }
+
     func resolveNode(in meshNetwork: MeshNetwork? = MeshNetworkManager.instance.meshNetwork) -> Node? {
         
         return meshNetwork?.node(withAddress: address)
@@ -356,11 +381,15 @@ final class GatewaySyncContext {
     private let nodeUUID: UUID
     private let address: Address
     private let deviceKey: Data?
+    private let saveTarget: GatewayModel
+    private let saveAssociations: [String]
 
     init(site: SiteData, gateway: GatewayModel, node: Node) {
         self.site = site
         self.gateway = gateway
         self.node = node
+        saveTarget = gateway.copy()
+        saveAssociations = gateway.associatedSpaces.map { "\($0.spaceId)|\($0.appKeyIndex)" }.sorted()
         network = MeshNetworkManager.instance.meshNetwork
         siteID = site.id
         meshUUID = site.meshUUID
@@ -418,8 +447,27 @@ final class GatewaySyncContext {
         guard let stored = GatewayModel.load(siteId: siteID, macAddress: gateway.mac).first else {
             return "failed_to_retrieve_data".localizedString
         }
-        gateway.update(gatewayModel: stored)
+        if case .devices = type {
+            guard matchesSaveTarget(gateway), matchesSaveTarget(stored) else {
+                return "gateway_sync_configuration_changed".localizedString
+            }
+        } else {
+            gateway.update(gatewayModel: stored)
+        }
         return error()
+    }
+
+    private func matchesSaveTarget(_ model: GatewayModel) -> Bool {
+        let mqttMatches: Bool
+        if let actual = model.mqttServerInfo, let expected = saveTarget.mqttServerInfo {
+            mqttMatches = actual == expected
+        } else {
+            mqttMatches = model.mqttServerInfo == nil && saveTarget.mqttServerInfo == nil
+        }
+        return model.lastUpdate == saveTarget.lastUpdate
+            && model.activate == saveTarget.activate && model.apn == saveTarget.apn
+            && mqttMatches
+            && model.associatedSpaces.map { "\($0.spaceId)|\($0.appKeyIndex)" }.sorted() == saveAssociations
     }
 
     /// Observe desired configuration, not Node binding/readback state that this
@@ -457,7 +505,7 @@ final class GatewaySyncContext {
         return { [self] in
             guard error() == nil, matches(gateway), keys() == originalKeys,
                   let stored = GatewayModel.load(siteId: siteID, macAddress: gateway.mac).first else { return false }
-            return matches(stored)
+            return matches(stored) && (!includesMQTT || (matchesSaveTarget(gateway) && matchesSaveTarget(stored)))
         }
     }
 }

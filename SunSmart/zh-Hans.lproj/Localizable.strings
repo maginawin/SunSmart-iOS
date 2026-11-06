@@ -2706,3 +2706,5 @@
 "site_dst_without_gateway_help" = "App 通过蓝牙将时区和夏令时设置直接同步到 Mesh 节点。请打开每个 Space 并至少连接一次其中的设备，确保所有节点收到更新。尚未同步的节点将保留原有设置。";
 "site_dst_next_with_gateway_help" = "有网关：网关会将下一次夏令时切换计划同步到 Mesh 节点，节点在计划时间自动切换。下一次切换计划会提前同步，以确保后续夏令时变更保持更新。";
 "site_dst_next_without_gateway_help" = "无网关：每次夏令时切换后，请再次切换夏令时设置，并重新进入所有 Space，以更新节点中的下一次切换计划。";
+
+"gateway_sync_configuration_changed" = "网关配置已发生变化，请重新进入网关页面后重试。";

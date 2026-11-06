@@ -3790,17 +3790,32 @@ extension GatewayModel {
     }
     
     /// 保存网关model数据
-    @discardableResult func save() -> Bool {
+    @discardableResult func save(importingConfiguration: Bool = false) -> Bool {
         GatewayDeletionContext.lockImport()
         defer { GatewayDeletionContext.unlockImport() }
-        return GatewayOrphanGuard.synchronized { saveCurrentGateway() }
+        return GatewayOrphanGuard.synchronized { saveCurrentGateway(importingConfiguration: importingConfiguration) }
     }
 
-    private func saveCurrentGateway() -> Bool {
+    private func saveCurrentGateway(importingConfiguration: Bool) -> Bool {
         guard isCurrentPersistenceContext, SunSmartDataManager.shared.db != nil,
               !GatewayDeletionContext.blocksSave(self) else { return false }
 
         
+        // A previous upload may finish after a new SAVE on another model instance.
+        let existing: Row?
+        do {
+            existing = try SunSmartDataManager.shared.db?.pluck(Self.gatewaysTable.filter(
+                ExpressionKey.siteUUID == siteId && ExpressionKey.macAddress == Self.normalizedMac(mac)
+            ))
+        } catch { return false }
+        if !importingConfiguration, let existing, existing[ExpressionKey.lastUpdateTimestamp] > lastUpdate { return false }
+        if !importingConfiguration, let uploaded = existing?[ExpressionKey.lastUploadCloudTimestamp] {
+            lastUploadCloudTimestamp = max(lastUploadCloudTimestamp ?? 0, uploaded)
+        }
+        let generationChanged = existing == nil
+            || existing?[ExpressionKey.lastUpdateTimestamp] != lastUpdate
+            || existing?[ExpressionKey.lastUploadCloudTimestamp] != lastUploadCloudTimestamp
+
         let spacesData = (try? jsonEncoder.encode(associatedSpaces)) ?? Data()
 
         let normalizedMac = GatewayModel.normalizedMac(self.mac)
@@ -3833,6 +3848,9 @@ extension GatewayModel {
             print(error)
             #endif
             return false
+        }
+        if generationChanged {
+            GatewayOrphanGuard.didChangeConfiguration(scope: .current(siteID: siteId), mac: mac)
         }
         return true
         

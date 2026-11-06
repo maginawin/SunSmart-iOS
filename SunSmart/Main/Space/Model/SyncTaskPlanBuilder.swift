@@ -5,6 +5,7 @@ final class SyncTaskPlanBuilder {
     typealias SyncType = SyncDevicesViewController.SyncType
     typealias SyncState = SyncDevicesViewController.SyncState
     private let type: SyncType
+    private let gatewayConfiguration: GatewayModel?
     private var syncState: SyncState
     private let profileSensorProtectionContext: ProfileSensorProtectionContext?
     private let groupProfileSyncContext: GroupProfileSyncContext?
@@ -21,8 +22,9 @@ final class SyncTaskPlanBuilder {
          profileSensorProtectionContext: ProfileSensorProtectionContext?,
          groupProfileSyncContext: GroupProfileSyncContext?,
          supplementaryProximityLightingSyncDatas: [(node: Node, syncData: NodeSyncData)],
-         imageExists: @escaping (String) -> Bool) {
+         imageExists: @escaping (String) -> Bool, gatewayConfiguration: GatewayModel? = nil) {
         self.type = type
+        self.gatewayConfiguration = gatewayConfiguration
         self.syncState = initialState
         self.profileSensorProtectionContext = profileSensorProtectionContext
         self.groupProfileSyncContext = groupProfileSyncContext
@@ -39,7 +41,7 @@ final class SyncTaskPlanBuilder {
 
         switch type {
         case .devices, .group:
-            for scene in MeshNetworkManager.instance.scenes where scene.info.configuration?.isDeleting == true {
+            for scene in MeshNetworkManager.instance.scenes where gatewayConfiguration == nil && scene.info.configuration?.isDeleting == true {
                 excludedSceneDeletionNumbers.insert(scene.number)
                 SyncSceneScheduleTaskBuilder().appendScene(to: configurationSection, removal: removeSection, scene: scene)
             }
@@ -137,6 +139,20 @@ final class SyncTaskPlanBuilder {
             switchBuilder.appendBatteryPowerSwitchItems(to: configurationSection, removeSection: removeSection, switchData: switchData)
 
         case .devices(let nodes):
+            if let gatewayConfiguration {
+                guard nodes.count == 1, let node = nodes.first else {
+                    failureMessages.append("failed_to_retrieve_data".localizedString)
+                    syncState = .syncFailure
+                    break
+                }
+                switch SyncGatewayTaskBuilder().makeSaveDevice(node: node, gateway: gatewayConfiguration) {
+                case .success(let device): configurationSection.devices.append(device)
+                case .failure:
+                    failureMessages.append("failed_to_retrieve_data".localizedString)
+                    syncState = .syncFailure
+                }
+                break
+            }
             nodes.forEach { node in
                 let result = self.getSyncDeviceModel(group: nil, node: node)
                 var device = result.configturationDevice

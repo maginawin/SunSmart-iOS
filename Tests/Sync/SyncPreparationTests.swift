@@ -78,12 +78,13 @@ struct SyncTaskPlanBuilder {
     static var calls = 0
     let initialState: SyncState
     init(type: SyncType, initialState: SyncState, profileSensorProtectionContext: Int?, groupProfileSyncContext: Int?,
-         supplementaryProximityLightingSyncDatas: [(node: Node, syncData: Int)], imageExists: (String) -> Bool) {
+         supplementaryProximityLightingSyncDatas: [(node: Node, syncData: Int)], imageExists: (String) -> Bool, gatewayConfiguration: Int? = nil) {
         self.initialState = initialState
     }
     func build() -> Plan { Self.calls += 1; return .init(initialState: initialState) }
 }
 final class GatewaySyncContext {
+    let gateway = 1
     var failure: String?, current = true
     func prepare(for type: SyncType) -> String? { failure }
     func capturePlan(for type: SyncType) -> () -> Bool { { self.current } }
@@ -165,6 +166,16 @@ final class GatewaySyncContext {
             denied.gatewayContext!.failure = nil; denied.rightItemAction()
             precondition(denied.installs == 1 && denied.starts == 1)
         }
+        reset(); let invalidatedGateway = Page(); invalidatedGateway.gatewayContext = GatewaySyncContext()
+        invalidatedGateway.rebuildTaskPlan(resume: true)
+        precondition(invalidatedGateway.starts == 1)
+        let builds = SyncTaskPlanBuilder.calls
+        invalidatedGateway.handlePlanInvalidation()
+        precondition(invalidatedGateway.starts == 1 && SyncTaskPlanBuilder.calls == builds,
+                     "invalidated Gateway must stop, never automatically build and execute the opposite target")
+        precondition(invalidatedGateway.needsTaskPreparation && invalidatedGateway.syncState == .syncFailure)
+        invalidatedGateway.rightItemAction()
+        precondition(invalidatedGateway.starts == 2, "explicit retry may prepare a valid context")
         reset(); let permission = Page(); SpaceSyncAccess.failure = .noSpacePermission
         permission.rebuildTaskPlan(resume: true)
         precondition(permission.installs == 0 && SpaceSyncCleanupCoordinator.calls == 0 && SceneConfigurationStore.calls == 0)

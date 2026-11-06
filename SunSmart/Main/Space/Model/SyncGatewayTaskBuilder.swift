@@ -20,6 +20,46 @@ struct SyncGatewayTaskBuilder {
         self.spaceName = spaceName
     }
 
+    /// SAVE uses one explicit desired configuration throughout the delta plan.
+    func makeSaveDevice(node: Node, gateway: GatewayModel) -> Result<SyncDevicesModel, BuildFailure> {
+        guard node.deviceType == .gateway else { return .failure(.notGateway) }
+        guard let network = meshNetwork() else { return .failure(.missingMeshNetwork) }
+        let indexes = Set(gateway.associatedSpaces.map(\.appKeyIndex)
+            + node.networkKeys.filter(\.isSecondary).map(\.index))
+        guard indexes.allSatisfy({ index in
+            network.networkKeys.contains { $0.index == index }
+                && network.applicationKeys.contains { $0.index == index && $0.boundNetworkKeyIndex == index }
+        }) else { return .failure(.missingAssociatedSpaceKeys) }
+
+        let delta = SyncDeviceTaskBuilder(spaceName: spaceName).makeDeviceModels(
+            group: nil, node: node, gatewayConfiguration: gateway
+        )
+        let configuration = delta.configturationDevice?.steps ?? []
+        let initialization = configuration.filter { step in
+            step.tasks.contains {
+                if case .configuration(_, .deviceInitialize) = $0.operationType { return true }
+                return false
+            }
+        }
+        let removals = delta.removeDevice?.steps ?? []
+        removals.forEach { $0.relevanceStepModels += initialization }
+        var steps = initialization + removals + configuration.filter { step in
+            !initialization.contains { $0 === step }
+        }
+        let task = SyncDeviceStepTaskModel(name: "gateway_recovery_verification".localizedString,
+            operationType: .configuration(node: node, type: .gatewayRecoveryVerification(gateway: gateway)))
+        let verification = SyncDeviceStepModel(type: "gateway_recovery_verification".localizedString,
+            state: .none, tasks: [task])
+        task.parentStepModel = verification
+        verification.relevanceStepModels = steps
+        steps.append(verification)
+        let device = SyncDevicesModel(name: node.name ?? gateway.name, address: node.primaryUnicastAddress)
+        device.imageName = node.iconName
+        device.steps = steps
+        steps.forEach { $0.parentDeviceModel = device }
+        return .success(device)
+    }
+
     func makeServerRecoverySteps(
         node: Node,
         gateway: GatewayModel,

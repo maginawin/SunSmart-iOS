@@ -2,6 +2,8 @@
 
 状态：已按用户确认方案完成 App 实现及自动化验证；Create 既有测试失败与人工验收边界见第 8 节。
 
+2026-11-06 追加：用户已确认并完成第 10 节的 Create / Edit / Gateway Next switch 展示调整，覆盖前文“原始 Next switch 透传”的历史要求。DST 回归与 SunSmart generic iOS 构建通过，真实页面验收待完成；记录见第 10.6 节。
+
 ## 1. 结论与范围
 
 需求合理，现有时区模型、缓存及共用表单足以支持。建议新增一个可复用 UIKit View，在 Create/Edit 的共用表单接入，不新增请求、持久化结构或 DST 推算机制。
@@ -199,3 +201,125 @@ Figma 已通过 connector 读取结构化设计及配套渲染：
 本次没有更改依赖、品牌条件或资源归属，按纯共享逻辑规则只增加 SunSmart Debug generic iOS 代表构建；不机械重跑六品牌或上轮已证实的无关 Create 失败。界面白底与后缀的真实运行效果仍需用户验收。
 
 追加构建结果：SunSmart Debug generic iOS exit 0，最新 Xcode 构建记录 errors=0、warnings=0；`git diff --check` 通过。未操作真机、未提交代码。
+
+## 10. 2026-11-06 Next switch 展示换算方案（已确认实施）
+
+### 10.1 结论与日期语义
+
+推荐统一展示“下一次切换瞬间，按本快照 Current offset 表示的切换前钟表时间”，格式为 `yyyy-MM-dd hh:mm a`。它与 Current offset 一起说明旧钟表走到何时发生切换，Switches to 仍说明随后生效的 offset。切换瞬间本身不改变，也不由 App 重新推算下一次 DST 日期。
+
+必须区分解析和展示：
+
+1. 解析服务器 `next_switch` 时，保留 ISO 字符串自带的 offset，得到唯一的绝对时间。这个 offset 可以等于切换后的 offset，也可以是 UTC；不能要求它必须等于 Current offset 或 Switches to。
+2. 展示该绝对时间时，使用同一个 Snapshot 的 `offsetMinutes` 创建固定偏移 TimeZone，表示切换前的钟表时间。不要仅替换字符串末尾的 offset，不要额外加减一小时。
+
+用户示例的正确换算：
+
+| 步骤 | 值 |
+| --- | --- |
+| 服务器 Next switch | `2027-04-30T01:00:00+03:00` |
+| 同一绝对时间的 UTC 表示 | `2027-04-29T22:00:00Z` |
+| 用 Current offset = UTC+09:00 展示 | **`2027-04-30 07:00 AM`** |
+
+`+09:00 - +03:00 = 6 小时`，因此不会换算为 7 月 30 日。若 Current offset 是 `UTC+02:00`，同一个例子才会显示为 `2027-04-30 12:00 AM`。12 小时制午夜是 `12:00 AM`，中午是 `12:00 PM`，不存在 `00:00 AM`。
+
+例如服务器用切换后的钟表表示某次春季切换：`03:00+02:00`，而 Current offset 是 `UTC+01:00`。解析后按 Current offset 显示 `02:00 AM`，表达“旧钟表到 02:00 时跳到 03:00”。秋季重复小时也用相同算法，无需单独分支。
+
+依据：[RFC 3339 §4.2](https://www.rfc-editor.org/rfc/rfc3339#section-4.2) 规定以本地时间减去 offset 得到 UTC；字符串携带切换后 offset 并不代表服务器错误。该标准证明时间戳如何换算，不证明示例对应某个真实 IANA 的 DST 规则。
+
+### 10.2 当前源码事实与相关路径
+
+分析时间：2026-11-06 14:21（Asia/Singapore）。工作树 `feat-daylight-saving-261024`，分支 `feat/daylight-saving-261024`，HEAD `71dd7e0b`。开始时已有 `SunSmart.xcodeproj/project.pbxproj`、`SunSmart/en.lproj/Localizable.strings` 未提交修改，本轮未触碰。
+
+| 环节 | 当前实现及本次影响 |
+| --- | --- |
+| Create / Edit | `SiteCreateViewController.swift` 内的 `SiteFormViewController.updateTimeZone()` 将选中 IANA 对应快照交给 Presentation；`SiteEditViewController` 继承共用表单 |
+| Gateway | `GatewayViewController.updateGatewayDSTPresentation(at:)` 使用同一 Presentation；`WiFiGatewayViewController` 继承该入口，普通/4G 与 Wi-Fi 一并覆盖 |
+| 响应与缓存 | `SiteTimeZoneService` → `SiteTimeZoneStore` → `SiteTimeZoneSnapshot`。Snapshot 已从原始 `next_switch` 解析 `nextSwitchDate`，支持小数秒；Codable 重载会重新解析并校验 |
+| 当前问题位置 | `SiteDaylightSavingTimePresentation.update` 直接把 `snapshot.nextSwitch` 赋给 `Content.nextSwitch`；`SiteDaylightSavingTimeView.render` 只将 Content 设到 Label |
+| 校时与失效边界 | `SiteTimeSetMessageFactory` 使用 `snapshot.nextSwitchDate` 生成未来切换目标；`isUsable` 在该绝对瞬间失效。展示改动不得改变这两个行为 |
+| 当前测试 | `SiteDaylightSavingTimePresentationTests` 明确断言原始 ISO 字符串，包含 form、gateway、磁盘恢复路径；这些断言需随新需求更新，原值保留断言应放在 Snapshot/缓存层 |
+
+现有共用 Presentation 足以完成需求，无需新增请求、观察者、独立缓存或持久状态。View 和三个页面宿主预计无需修改。
+
+### 10.3 最小实施范围
+
+1. 在 `SunSmart/Main/Site/Model/SiteDaylightSavingTimePresentation.swift` 内添加私有展示格式化方法，使用已解析的 `snapshot.nextSwitchDate` 与 `TimeZone(secondsFromGMT: snapshot.offsetMinutes * 60)`；`Content.nextSwitch` 改为格式化结果。继续保留 identifier 检查、显隐和展开规则。
+2. 格式使用 Gregorian calendar、`en_US_POSIX`、`yyyy-MM-dd hh:mm a`，按本次要求固定两位月/日/小时及 AM/PM；AM/PM 由 formatter 生成，不拼接硬编码后缀。与现有 Local time 的固定英文 AM/PM 策略一致，三行标题继续使用已有中英国际化 Key。小数秒和秒只从显示中省略，不取整或改写 Date。
+3. 不使用手机时区、静态时区目录或 `TimeZone(identifier:)` 格式化该行；IANA 在切换瞬间可能已采用新 offset，会改变本次“切换前钟表时间”的展示含义。
+4. 不复用 `effectiveOffset(at: nextSwitchDate)` / `formattedLocalDate(at: nextSwitchDate)`：Snapshot 在切换点即失效，前者返回 nil，后者显示 `--`。这里直接使用同一快照的已校验 offset，计算已知切换点的展示值，不将其授权为该时刻可用的校时数据。
+5. 不修改 `SiteTimeZoneSnapshot` 的解析、校验、原始字段、Codable、`isUsable`、请求/重试机制或 `SiteTimeSetMessageFactory`。保留 Current offset / Switches to 的 DST 后缀和状态规则。
+6. 更新现有 `Tests/Site/SiteDaylightSavingTimePresentationTests.swift` 的行为用例与原始文本断言；沿用 `scripts/check_site_dst.sh`，不新增测试工程或依赖。
+
+固定格式设置参考 [Apple QA1480](https://developer.apple.com/library/archive/qa/qa1480/_index.html)：固定格式需要明确 locale，避免系统日历和 12/24 小时偏好改变结果。本次选择固定格式是用户指定的展示需求；没有扩大为全 App 日期格式调整。
+
+### 10.4 空值、失败和兼容性
+
+- `next_switch` / `switches_to` 为合法 null：继续隐藏 DST 卡片，不生成虚构日期。
+- 无缓存或首次请求失败：继续隐藏；非法响应沿用 Snapshot 校验，不回退到原始字符串或手机时区来掩盖错误。
+- 有快照但刷新失败：继续按该快照的 Current offset 格式化其 Next switch。已过切换点或系统时间回拨时，保留原有 Refresh required 和缓存提示；不得把缓存时间宣称为最新的下一次切换。
+- 刷新成功：三行从同一新 Snapshot 更新；下一次切换变为 null 时隐藏。换 IANA、旧请求晚到、取消选择和退出重进沿用现有身份与观察规则。
+- 旧缓存重载：从原始 ISO 字符串恢复 `nextSwitchDate` 后按新格式展示，原始值和精度保持；没有迁移/回填或缓存版本变化。
+- **数据库与 export JSON 无任何结构或字段语义变更**。Site.timezone、接口字段、缓存 CodingKeys/版本、导入导出、分享和同步协议均保持原契约；格式化文本仅属于非持久化 Content，不回写业务数据。
+- 所有使用共享文件的品牌受益：SunSmart、Archipelago、SLG Sync Plus、SylSmart、Lumineux、HSmart。没有新增资源、品牌条件或 SDK API；本次无 SDK、服务器或固件配套研发与发布依赖。
+- 当前没有目标 Site 的真实 IANA、完整响应与服务端实现证据；不能仅凭 `+09:00` 与 `+03:00` 的差值判断真实 DST 规则是否正确。后续真实 API 验收需核对完整四字段和请求时间；若服务端绝对时间本身错误，由服务端负责人修正，App 展示换算不能修复错误计划。
+
+### 10.5 验证计划与验收值
+
+以下为换算夹具，刻意允许 identifier 与 offset 不一致，以证明展示服从服务器字段；它们不是对真实地区规则的断言。
+
+| Current offset | 原始 Next switch | 预期展示 | 覆盖点 |
+| --- | --- | --- | --- |
+| `UTC+09:00` | `2027-04-30T01:00:00+03:00` | `2027-04-30 07:00 AM` | 用户示例 |
+| `UTC+02:00` | `2027-04-30T01:00:00+03:00` | `2027-04-30 12:00 AM` | 午夜与 12 小时制 |
+| `UTC+01:00` | `2027-03-28T03:00:00+02:00` | `2027-03-28 02:00 AM` | 向前切换 |
+| `UTC-05:00` | `2027-11-07T01:00:00-06:00` | `2027-11-07 02:00 AM` | 向后切换 |
+| `UTC+11:00` | `2027-04-04T01:30:00.123+10:30` | `2027-04-04 02:00 AM` | 半小时变化、小数秒 |
+| `UTC-05:00` | `2027-01-01T02:00:00Z` | `2026-12-31 09:00 PM` | UTC 输入、跨日/月/年、PM |
+| `UTC+05:45` | `2027-04-30T01:00:00Z` | `2027-04-30 06:45 AM` | 45 分钟偏移 |
+
+实施后在已有行为测试内覆盖上述结果，并补同 offset、正向跨日、正午 `12:00 PM`。对 form 与 gateway 两种模式比较相同 Content；通过实际 Snapshot 解析与 Store/Codable 路径验证空值、失败、切换点前后、恢复、不同 IANA 晚到响应及重启重载。断言原始 ISO、`nextSwitchDate` 和有效性边界保持不变，避免测试只覆盖独立格式化函数。
+
+执行 `bash scripts/check_site_dst.sh` 和 `git diff --check`。如实施范围保持仅共享 Presentation 与行为测试，一轮修改结束后按项目规则核对 local workspace / SDK 映射，再运行一次 SunSmart Debug generic iOS；不机械重跑六品牌或与此无关的校时传输回归。若实际需要改宿主、资源或依赖，依据新增影响补检查。
+
+最短人工验收：
+
+1. 同一时区分别进入 Create site、Edit site、普通/4G Gateway 和 Wi-Fi Gateway，核对 Next switch 数值一致、格式正确；Create/Edit 仍能展开，Gateway 仍只读。
+2. 在窄屏、中英文、手机时区与 Site 不同以及系统 24 小时设置下核对显示和换行；日期不随手机时区改变。
+3. 切换 IANA、取消后返回、退出重进；断网重进有缓存页面，核对旧值与 Refresh required；恢复网络后，三行切换到同一份最新响应。
+
+分析阶段已完成：只读调用链核对；临时 Foundation 探针直接编译当时 Snapshot 与 Presentation，确认原先显示原始字符串；以上 7 个换算值全部符合预期，真实 Codable 往返保留原字符串与绝对瞬间，并确认 Snapshot 在切换点失效。临时文件已清理。
+
+分析阶段未实施生产改动；用户随后明确“开始实施”，按本节执行。探针只验证本机 Foundation 数学换算及模型，不代表服务端/设备已验收。
+
+### 10.6 实施与验证记录
+
+用户授权：2026-11-06“开始实施”。分支与 HEAD 保持 `feat/daylight-saving-261024` / `71dd7e0b`。
+
+实际修改仅为：
+
+- `SunSmart/Main/Site/Model/SiteDaylightSavingTimePresentation.swift`：使用已解析的切换 Date 和快照固定 offset，生成 `yyyy-MM-dd hh:mm a`；保留原有状态、隐藏和展开逻辑。
+- `Tests/Site/SiteDaylightSavingTimePresentationTests.swift`：将展示断言更新为新格式，补充 10 组日期行为、手机默认时区 UTC-10 / UTC+14、form / gateway 模式、切换点前后、原始时间戳与精度保留；在已有真实 Store / 磁盘缓存用例内检查失败、非法日期、恢复、不同 IANA 晚到及重启重载的显示结果。
+- 本文档：记录已确认决定及交付证据。
+
+未新增资源、持久字段或依赖，未修改页面宿主、Snapshot、Store、SDK 和校时工厂。既有工程文件及英文 strings 修改保留。
+
+| 检查 | 结果及边界 |
+| --- | --- |
+| `bash scripts/check_site_dst.sh` | 4 组通过：Value、Snapshot、Store、Presentation；使用真实生产解析、Codable、异步 Store 与磁盘缓存，网络响应由夹具提供 |
+| 日期与模式行为 | 10 组输入同时覆盖两种手机默认时区、form/gateway、有效与过期状态；用户示例输出 `2027-04-30 07:00 AM`。小数秒只省略显示，实际失效边界不取整 |
+| 六 target 源文件归属 | 读取实际工程对象，各 target 的 Sources 都恰有一份共用 Presentation；无品牌条件差异，本轮采用 SunSmart 代表构建 |
+| `git diff --check` | 通过 |
+| SunSmart Debug generic iOS | `xcodebuild` exit 0；Xcode LogStoreManifest 记录 errors=0、warnings=119；SunSmart.app 可执行文件存在 |
+
+SDK 映射已核对：`SunSmartLocal.xcworkspace` 引用 `.local-sdk/nordic-sig-mesh-sdk`，realpath 为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`；SDK HEAD `2809c540be3b965a6a847ee4586ac46faf2ca2b5`，开始时工作树干净。本轮不写入 SDK，也未引入新 API。
+
+最终核对：SDK HEAD 和干净状态保持不变；工程文件和英文 strings 的 SHA-256 与实施前一致，保留用户既有改动。构建输出的警告涉及未改动的 CryptoSwift / Moya / SDK / App 代码中的兼容性及弃用等问题；曾出现 `command failed with exit code 0 but produced no further output` 诊断，已用最终进程退出码、零错误构建记录及产物交叉核对，未因此改动无关代码、clean 或重复构建。
+
+构建命令：
+
+```bash
+xcodebuild -workspace SunSmartLocal.xcworkspace -scheme SunSmart -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath /Users/maginawin/Library/Developer/Xcode/DerivedData/SunSmart-feat-daylight-saving-261024-next-switch -quiet CODE_SIGNING_ALLOWED=NO build
+```
+
+人工待验收：第 10.5 节的三处完整页面路径（网关含普通/4G 与 Wi-Fi）、真实 API、窄屏与中英文、系统 24 小时设置和退出/断网重进体验。自动回归不能替代 UIKit / 真机验收；未安装或操作真机，未 commit / push。

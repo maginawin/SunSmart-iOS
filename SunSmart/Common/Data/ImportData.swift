@@ -1155,7 +1155,11 @@ extension SiteData {
                         )
                     }
 
-                    let cacheGateway = cacheByMac[mac]
+                    // Node.import suspends. Re-read under the import lock before deciding or saving.
+                    guard GatewayOrphanGuard.allowsConfigurationImport(
+                        siteJsonData, scope: gatewayImportScope, mac: mac
+                    ) else { continue }
+                    let cacheGateway = GatewayModel.load(siteId: self.id, macAddress: mac).first
                     let cacheNode = cacheGateway.flatMap { cachedGateway in
                         network.nodes.first(where: {
                             $0.primaryUnicastAddress == cachedGateway.address
@@ -1348,7 +1352,7 @@ extension SiteData {
                     let appliedRemoteTimestamp = remoteUpdateTimestamp ?? 0
                     remoteGateway.lastUpdate = appliedRemoteTimestamp
                     remoteGateway.lastUploadCloudTimestamp = appliedRemoteTimestamp
-                    remoteGateway.save()
+                    remoteGateway.save(importingConfiguration: true)
                     
                     updateNetwork = true
                 }

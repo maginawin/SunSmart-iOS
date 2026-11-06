@@ -137,11 +137,20 @@ class SyncDevicesViewController: UIViewController {
         
         executionSession.onPlanInvalidated = { [weak self] in
             guard let self, !self.hasLeftSyncPage else { return }
-            self.profileSensorProtectionContext = nil
-            self.groupProfileSyncContext = nil
-            self.rebuildTaskPlan(resume: true)
+            self.handlePlanInvalidation()
         }
         rebuildTaskPlan(resume: syncState == .inSync)
+    }
+
+    private func handlePlanInvalidation() {
+        profileSensorProtectionContext = nil
+        groupProfileSyncContext = nil
+        if gatewayContext != nil {
+            // A changed desired Gateway configuration requires an explicit new attempt.
+            failTaskPreparation("gateway_sync_configuration_changed".localizedString)
+        } else {
+            rebuildTaskPlan(resume: true)
+        }
     }
 
     private func rebuildTaskPlan(resume: Bool) {
@@ -285,7 +294,7 @@ class SyncDevicesViewController: UIViewController {
             supplementaryProximityLightingSyncDatas: self.supplementaryProximityLightingSyncDatas.compactMap { item in
                 guard let node = self.currentNode(item.node), let data = node.getNodeSyncProximityLighting() else { return nil }
                 return (node, data)
-            }, imageExists: { UIImage(named: $0) != nil })
+            }, imageExists: { UIImage(named: $0) != nil }, gatewayConfiguration: gatewayContext?.gateway)
         // Own the mutable Mesh snapshot on the same queue as its callbacks.
         let result = builder.build()
         guard isCurrent() else {
@@ -611,6 +620,7 @@ class SyncDevicesViewController: UIViewController {
             if state == .syncSuccess {
                 switch self.type {
                 case .devices, .group:
+                    guard self.gatewayContext == nil else { break }
                     do {
                         try SceneConfigurationStore().prepareDeletionRetries()
                         if MeshNetworkManager.instance.scenes.contains(where: { $0.info.configuration?.isDeleting == true }) {

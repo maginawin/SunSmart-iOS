@@ -15,7 +15,8 @@ struct SyncDeviceTaskBuilder {
         effectiveMemberCount: Int? = nil,
         profileSyncContext: GroupProfileSyncContext? = nil,
         protectsProfileSensors: Bool = false,
-        excludedSceneDeletionNumbers: Set<UInt16> = []
+        excludedSceneDeletionNumbers: Set<UInt16> = [],
+        gatewayConfiguration: GatewayModel? = nil
     ) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
 
         /// 删除操作
@@ -49,7 +50,10 @@ struct SyncDeviceTaskBuilder {
             }) {
                 syncDataTypes.sort(by: { $0.level > $1.level })
             }
-        }else {
+        } else if let gatewayConfiguration {
+            syncDataTypes = node.isKeybindComplete ? [] : [.deviceInitialize]
+            syncDataTypes += node.getNodeSyncGatewayData(gateway: gatewayConfiguration)
+        } else {
             syncDataTypes = node.getSyncData(type: .all)
         }
 
@@ -454,6 +458,21 @@ struct SyncDeviceTaskBuilder {
                     }
                 }
             })
+        }
+
+        let associationSteps = (deleteSteps + configturationSteps).filter { step in
+            step.tasks.contains { task in
+                switch task.operationType {
+                case .configuration(_, .gatewayAssociatedSpace), .delete(_, .gatewayUnbindAssociatedSpace): return true
+                default: return false
+                }
+            }
+        }
+        for step in configturationSteps where step.tasks.contains(where: {
+            if case .configuration(_, .gatewaySubnetAppkeyIndexs) = $0.operationType { return true }
+            return false
+        }) {
+            step.relevanceStepModels += associationSteps
         }
 
         if !MissingGroupSubscriptionCleanup.addresses(for: node).isEmpty {

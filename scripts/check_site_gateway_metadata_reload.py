@@ -59,7 +59,8 @@ production += section(controller, '            if notification.object as? Bool ?
                       '            self.setupData()')
 production += '    }\n'
 production += section(controller, '    private func loadGatewaysData()',
-                      '    private func shouldShowGatewayStatus(')
+                      '    private func shouldShowGatewayList(' if '    private func shouldShowGatewayList(' in controller
+                      else '    private func shouldShowGatewayStatus(')
 production += '    func gateways() -> [Gateway] { loadGatewaysData() }\n'
 production += '    func overview() -> GatewayOverviewStats {\n'
 production += '        let spaces = allSpaces\n        let headerView = Header()\n'

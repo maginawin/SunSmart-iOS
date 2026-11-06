@@ -21,6 +21,8 @@ enum SyncTaskBuilderTests {
         testInitializationAndProfile()
         testScheduleAndExit()
         testSwitchAndOtherOperations()
+        testGatewaySaveDependencies()
+        testGatewaySavePlan()
         testGatewayRecovery()
         testSectionOrdering()
         testDongleDeletion()
@@ -224,6 +226,49 @@ enum SyncTaskBuilderTests {
         require(mixed.configturationDevice!.steps[1].tasks.count == 7, "all parameter variants")
         require(mixed.configturationDevice!.steps.last!.tasks[0].name == "Office" && mixed.removeDevice!.steps.last!.tasks[0].name == "space", "Space title lookup and fallback")
         validateParents(mixed.configturationDevice!); validateParents(mixed.removeDevice!)
+    }
+
+    static func testGatewaySavePlan() {
+        let node = Node(), gateway = GatewayModel(), network = MeshNetwork()
+        node.deviceType = .gateway
+        MeshNetworkManager.instance.meshNetwork = network
+        network.networkKeys = [.init(index: 1), .init(index: 2)]
+        network.applicationKeys = [.init(index: 1, boundNetworkKeyIndex: 1), .init(index: 2, boundNetworkKeyIndex: 2)]
+        gateway.associatedSpaces = [.init(appKeyIndex: 1, spaceName: "Office")]
+        node.networkKeys = [.init(index: 2)]
+        node.inputs = [.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [])] // stale database target
+        node.gatewayInputs = [
+            .gatewayAssociatedSpaces(datas: [(network.networkKeys[0], network.applicationKeys[0])], activate: true),
+            .gatewayUnbindAssociatedSpaces(datas: [(network.networkKeys[1], network.applicationKeys[1])], activate: true),
+            .syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [1])
+        ]
+        let result = try! SyncGatewayTaskBuilder().makeSaveDevice(node: node, gateway: gateway).get()
+        require(node.requestedGateway === gateway && node.requests.isEmpty, "SAVE must use the explicit target, not reload .all")
+        require(result.steps.map(\.type) == ["unbind_associated_spaces", "associated_spaces", "gateway_sync_spaces", "gateway_recovery_verification"], "only required deltas and final verification")
+        require(result.steps.last!.relevanceStepModels.count == 3, "final verification waits for every delta")
+        validateParents(result)
+        network.applicationKeys.removeLast()
+        guard case .failure(.missingAssociatedSpaceKeys) = SyncGatewayTaskBuilder().makeSaveDevice(node: node, gateway: gateway) else {
+            preconditionFailure("missing removal keys cannot produce a partial successful plan")
+        }
+        network.applicationKeys.append(.init(index: 2, boundNetworkKeyIndex: 2))
+        gateway.associatedSpaces = []; node.networkKeys = []; node.gatewayInputs = []
+        require(try! SyncGatewayTaskBuilder().makeSaveDevice(node: node, gateway: gateway).get().steps.count == 1, "legal empty target only verifies")
+    }
+
+    static func testGatewaySaveDependencies() {
+        let node = Node()
+        node.inputs = [
+            .gatewayAssociatedSpaces(datas: [(.init(index: 1), .init(index: 1, boundNetworkKeyIndex: 1))], activate: true),
+            .gatewayUnbindAssociatedSpaces(datas: [(.init(index: 2), .init(index: 2, boundNetworkKeyIndex: 2))], activate: true),
+            .syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [1])
+        ]
+        let result = buildDevice(group: nil, node: node)
+        let additions = result.configturationDevice!.steps[0]
+        let removals = result.removeDevice!.steps[0]
+        let indexes = result.configturationDevice!.steps[1]
+        require(indexes.relevanceStepModels.contains { $0 === additions }, "Sync Spaces must wait for the additions")
+        require(indexes.relevanceStepModels.contains { $0 === removals }, "Sync Spaces must wait for the removals")
     }
 
     static func testGatewayRecovery() {

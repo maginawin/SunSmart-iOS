@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix='sync-preparation-') as directory:
 
     controller = (ROOT / 'SunSmart/Main/Space/Controller/SyncDevicesViewController.swift').read_text()
     methods = '\n'.join(function(controller, marker).replace('@objc ', '').replace('private func', 'func') for marker in [
-        '    private func rebuildTaskPlan(', '    private func acceptsPreparation(', '    private func cancelTaskPreparation(',
+        '    private func handlePlanInvalidation(', '    private func rebuildTaskPlan(', '    private func acceptsPreparation(', '    private func cancelTaskPreparation(',
         '    private func failTaskPreparation(', '    private func buildPreparedTaskPlan(',
         '    @objc private func rightItemAction(', '    private func updateSyncStateUI('])
     source = (ROOT / 'Tests/Sync/SyncPreparationTests.swift').read_text().replace('// PRODUCTION_METHODS', methods)

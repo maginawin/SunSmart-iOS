@@ -24,15 +24,18 @@ final class SiteData {
     // PRODUCTION_PERMISSION
 }
 final class Association { var spaceId = "space"; var appKeyIndex: UInt16 = 1 }
+// Like the SDK type, supports == without declaring Equatable conformance.
+struct MQTT { var value: String; static func == (lhs: Self, rhs: Self) -> Bool { lhs.value == rhs.value } }
 final class GatewayModel {
     var siteId = "site", mac = "AABB"; var address: Address = 1
     var isCurrentPersistenceContext = true, isServerDeletionInProgress = false, serverDeletionPendingLocalReset = false
-    var activate = true; var apn: String?; var mqttServerInfo: String?; var associatedSpaces = [Association()]
+    var lastUpdate: Int64 = 1
+    var activate = true; var apn: String?; var mqttServerInfo: MQTT?; var associatedSpaces = [Association()]
     static var stored: GatewayModel?
     static func load(siteId: String, macAddress: String) -> [GatewayModel] { stored.map { [$0] } ?? [] }
     static func normalizedMac(_ value: String) -> String { value.uppercased() }
     func update(gatewayModel: GatewayModel) { activate = gatewayModel.activate; apn = gatewayModel.apn; mqttServerInfo = gatewayModel.mqttServerInfo; associatedSpaces = gatewayModel.associatedSpaces }
-    func copy() -> GatewayModel { let result = GatewayModel(); result.update(gatewayModel: self); return result }
+    func copy() -> GatewayModel { let result = GatewayModel(); result.update(gatewayModel: self); result.lastUpdate = lastUpdate; return result }
 }
 enum GatewayDeletionContext { static var pending = false; static func hasPendingDeletion(siteId: String, mac: String) -> Bool { pending } }
 enum SyncDevicesViewController { enum SyncType { case devices([Node]), gatewayRecovery(Node, GatewayModel, Int), gatewayServerRecovery(Node, GatewayModel), scene } }
@@ -82,17 +85,23 @@ enum SyncDevicesViewController { enum SyncType { case devices([Node]), gatewayRe
             precondition(!plan(), "changed authority/identity/configuration must invalidate plan")
         }
         c = setup(); let recovery = c.capturePlan(for: .gatewayServerRecovery(c.node, c.gateway))
-        c.gateway.mqttServerInfo = "authorized"; GatewayModel.stored!.mqttServerInfo = "authorized"
+        c.gateway.mqttServerInfo = MQTT(value: "authorized"); GatewayModel.stored!.mqttServerInfo = MQTT(value: "authorized")
         c.node.networkKeys.append(Key(index: 1))
         precondition(recovery(), "own authorization and successful key binding must not invalidate plan")
         let save = c.capturePlan(for: .devices([c.node]))
-        GatewayModel.stored!.mqttServerInfo = "external-change"
+        GatewayModel.stored!.mqttServerInfo = MQTT(value: "external-change")
         precondition(!save(), "Save uses captured MQTT values")
         c = setup(); let associationPlan = c.capturePlan(for: .gatewayRecovery(c.node, c.gateway, 0))
         c.gateway.associatedSpaces[0].appKeyIndex = 2
         precondition(!associationPlan(), "in-place associated Space edits must not mutate the captured desired snapshot")
         c = setup(); GatewayModel.stored!.apn = "updated"
-        precondition(c.prepare(for: .devices([c.node])) == nil && c.gateway.apn == "updated")
+        precondition(c.prepare(for: .gatewayRecovery(c.node, c.gateway, 0)) == nil && c.gateway.apn == "updated")
+        c = setup(); GatewayModel.stored!.associatedSpaces = []
+        precondition(c.prepare(for: .devices([c.node])) != nil, "SAVE must reject an externally replaced target instead of adopting it")
+        precondition(c.gateway.associatedSpaces.count == 1, "rejected preparation preserves the saved binding intent")
+        c = setup(); let generationPlan = c.capturePlan(for: .devices([c.node]))
+        GatewayModel.stored!.lastUpdate += 1
+        precondition(!generationPlan() && c.prepare(for: .devices([c.node])) != nil, "new generation must invalidate SAVE even with equal associations")
         print("PASS Site gateway context: Owner/Editor, empty associations, permissions, identity, deletion, keys, refresh and authorization writeback")
     }
 }

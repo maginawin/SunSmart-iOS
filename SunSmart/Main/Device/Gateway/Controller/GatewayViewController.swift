@@ -79,6 +79,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var isViewVisible: Bool = false
     /// 防止重复进入网关恢复页面
     private var isPresentingGatewayRecovery: Bool = false
+    private var isSavingGatewayConfiguration = false
     /// 网关 4G 信号刷新定时器
     private var signalRefreshTimer: Timer?
     private var destructiveOperationState: GatewayDestructiveOperationState = .idle
@@ -882,6 +883,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     /// 保存
     @objc private func saveBtnAction() {
+        guard !isSavingGatewayConfiguration else { return }
         guard let name = self.name, !name.isAllInputTextEmpty() else {
             return
         }
@@ -890,9 +892,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return
         }
 
+        isSavingGatewayConfiguration = true
         bottomView.saveBtn.isEnabled = false
         Task { [weak self] in
             guard let self = self else { return }
+            defer { self.isSavingGatewayConfiguration = false; self.updateSaveBtnState() }
             let associationResult = await self.saveAssociatedSpacesIfNeeded()
             guard associationResult.succeeded else {
                 if associationResult.topologyChanged {
@@ -912,32 +916,31 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         name: String,
         associationTopologyChanged: Bool
     ) {
-        if gateway.name != name {
-            self.setGatewayModel.name = name
-            self.gateway.name = name
-            self.node.name = name
-            self.title = name
-            self.node.save()
+        setGatewayModel.name = name
+        guard gatewayModel.commitConfiguration(setGatewayModel) else {
+            XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
+            updateSaveBtnState()
+            return
         }
-
-        gatewayModel.update(gatewayModel: setGatewayModel)
-        gateway.model.save()
+        if node.name != name {
+            node.name = name
+            node.save()
+        }
+        title = name
         if associationTopologyChanged {
             notifySiteGatewayAssociationTopologyChanged()
         }
-        //        node.gatewayModel?.update(gatewayModel: setGatewayModel)
-        //        node.gatewayModel?.save()
 
         updateSaveBtnState()
-        // 判断是否需要同步设备数据
-        guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
+        let context = GatewaySyncContext(site: site, gateway: gatewayModel, node: node)
+        if case .success(let plan) = SyncGatewayTaskBuilder().makeSaveDevice(node: node, gateway: gatewayModel),
+           plan.steps.count == 1, plan.steps[0].tasks.allSatisfy({ $0.operationType.isSuccessful }),
+           context.prepare(for: .devices([node])) == nil {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            // 通知网关数据修改
-            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: gateway)
             return
         }
-        let vc = SyncDevicesViewController(type: .devices([node]),
-            gatewayContext: GatewaySyncContext(site: site, gateway: gatewayModel, node: node))
+        let vc = SyncDevicesViewController(type: .devices([node]), gatewayContext: context)
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -954,7 +957,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.updateSaveBtnState()
             self.tableView.reloadData()
 
-            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            if context.prepare(for: .devices([self.node])) == nil {
+                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            }
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -1038,11 +1043,18 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             })
         }
         var topologyChanged = false
+        var confirmedSpaces = latestSpaces
         for space in addSpaces {
             let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
             switch result {
             case .success:
                 topologyChanged = true
+                confirmedSpaces.append(space)
+                guard commitAssociatedSpaces(confirmedSpaces, updateDraft: false) else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
+                    return .init(succeeded: false, topologyChanged: true)
+                }
             case .failure(let error):
                 await reconcileAssociatedSpacesAfterPartialSave()
                 XWHUDManager.hide()
@@ -1058,6 +1070,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             switch result {
             case .success:
                 topologyChanged = true
+                confirmedSpaces.removeAll { $0.spaceId.caseInsensitiveCompare(space.spaceId) == .orderedSame }
+                guard commitAssociatedSpaces(confirmedSpaces, updateDraft: false) else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
+                    return .init(succeeded: false, topologyChanged: true)
+                }
             case .failure(let error):
                 await reconcileAssociatedSpacesAfterPartialSave()
                 XWHUDManager.hide()
@@ -1076,7 +1094,20 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         guard case .success(let spaces) = await loadAssociatedSpaces() else {
             return
         }
-        applyAuthoritativeAssociatedSpaces(spaces)
+        _ = commitAssociatedSpaces(spaces, updateDraft: true)
+        reloadSection(.associatedSpaces)
+        reloadSection(.name)
+        updateSaveBtnState()
+    }
+
+    @discardableResult private func commitAssociatedSpaces(
+        _ spaces: [GatewaySpaceData], updateDraft: Bool
+    ) -> Bool {
+        let desired = gatewayModel.copy()
+        desired.associatedSpaces = spaces
+        guard gatewayModel.commitConfiguration(desired) else { return false }
+        if updateDraft { setGatewayModel.associatedSpaces = spaces }
+        return true
     }
 
     private func applyAuthoritativeAssociatedSpaces(
@@ -1156,9 +1187,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             }
             switch result {
             case .success:
-                self.gatewayModel.associatedSpaces.removeAll()
-                self.setGatewayModel.associatedSpaces.removeAll()
-                self.gatewayModel.save()
+                guard self.commitAssociatedSpaces([], updateDraft: true) else {
+                    self.finishForceClearAssociatedSpacesWithFailure()
+                    return
+                }
                 self.reloadSection(.associatedSpaces)
                 self.updateSaveBtnState()
                 self.notifySiteGatewayAssociationTopologyChanged()
@@ -1737,7 +1769,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     /// 更新保存按钮状态
     private func updateSaveBtnState() {
-        if self.isGatewayProxyConnecting || isDeletingGateway || gatewayModel.serverDeletionPendingLocalReset {
+        if isSavingGatewayConfiguration || self.isGatewayProxyConnecting || isDeletingGateway || gatewayModel.serverDeletionPendingLocalReset {
             bottomView.saveBtn.isEnabled = false
         }else {
             bottomView.saveBtn.isEnabled = canConfigureCurrentGateway && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))

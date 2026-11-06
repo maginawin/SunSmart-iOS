@@ -79,6 +79,10 @@ final class Node: Equatable {
     var deviceType: DeviceType = .light
     var isWiFiGateway = false
     var networkKeys: [NetworkKey] = []
+    var isKeybindComplete = true
+    var gatewayInputs: [NodeSyncData] = []
+    var requestedGateway: GatewayModel?
+    func getNodeSyncGatewayData(gateway: GatewayModel) -> [NodeSyncData] { requestedGateway = gateway; return gatewayInputs }
     var orphanAddresses: Set<Address> = []
     var inputs: [NodeSyncData] = []
     var requests: [(NodeSyncType, GroupProfileSyncContext?)] = []
