@@ -14,6 +14,8 @@ let SitesDataRefreshNotifiacationName = "SitesRefreshNotifiacation"
 
 class SitesViewController: UIViewController {
     private var preparingSiteTransfer = false
+    private var siteAccount = UserData.currentUserId
+    private var pendingSiteReloads: Set<String> = []
     
     enum SectionType {
         
@@ -222,6 +224,7 @@ class SitesViewController: UIViewController {
     
     /// 数据源
     private func setupData() {
+        siteAccount = UserData.currentUserId
         let sites = SiteData.loadAll()
         allSites = sites
         favouriteSites = sites.filter({ $0.isFavourite })
@@ -666,7 +669,23 @@ class SitesViewController: UIViewController {
         updateEmptyView()
         let vc = SiteViewController(site: site, addSite: true)
         navigationController?.pushViewController(vc, animated: true)
-        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
+        startCreatedSiteSynchronization(site)
+    }
+
+    private func startCreatedSiteSynchronization(_ site: SiteData) {
+        let account = siteAccount
+        // A list reload may release the original object before this task finishes.
+        let identity = (id: site.id, region: site.region, meshUUID: site.meshUUID,
+                        networkId: site.meshNetworkId, created: site.create)
+        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal) { [weak self] _ in
+            guard let self, account == UserData.currentUserId, account == self.siteAccount,
+                  identity.region == UserData.currentServerRegion,
+                  let current = self.allSites.first(where: {
+                      $0.id == identity.id && $0.region == identity.region && $0.meshUUID == identity.meshUUID
+                          && $0.meshNetworkId == identity.networkId && $0.create == identity.created
+                  }) else { return }
+            self.scheduleSiteReload(current)
+        }
     }
     
     /// 编辑场所
@@ -1074,38 +1093,76 @@ class SitesViewController: UIViewController {
         
     }
     
-    /// 刷新site
-    private func reloadSiteData(_ site: SiteData) {
-        
-        // 刷新数据
-        var indexPath: IndexPath?
-        var currentCollectionView: UICollectionView?
-        if self.segmentedControl.selectedIndex == 0 {
-            if let index = allSites.filter({ $0.permission == .owner }).firstIndex(where: { $0.id == site.id }) {
-                indexPath = IndexPath(row: index, section: 0)
-            }else if let index = allSites.filter({ $0.permission == .visitor }).firstIndex(where: { $0.id == site.id }) {
-                indexPath = IndexPath(row: index, section: 1)
-            }
-            currentCollectionView = allSitesCollectionView
-        }else {
-            if let index = favouriteSites.filter({ $0.permission == .owner }).firstIndex(where: { $0.id == site.id }) {
-                indexPath = IndexPath(row: index, section: 0)
-            }else if let index = favouriteSites.filter({ $0.permission == .visitor }).firstIndex(where: { $0.id == site.id }) {
-                indexPath = IndexPath(row: index, section: 1)
-            }
-            currentCollectionView = favouritesCollectionView
+    /// Run after the manager removes terminal handles, coalescing callbacks for the same Site.
+    private func scheduleSiteReload(_ site: SiteData) {
+        guard siteAccount == UserData.currentUserId, site.region == UserData.currentServerRegion else { return }
+        let account = siteAccount
+        let key = "\(account)_\(site.region.rawValue)_\(site.id)_\(site.create)"
+        guard pendingSiteReloads.insert(key).inserted else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.pendingSiteReloads.remove(key)
+            guard account == UserData.currentUserId, account == self.siteAccount,
+                  site.region == UserData.currentServerRegion else { return }
+            self.reloadSiteData(site)
+            if self.viewIfLoaded?.window != nil { self.updateSyncState() }
         }
-        CATransaction.setDisableActions(true)
-        if let reloadIndexPath = indexPath, let collectionView = currentCollectionView {
-            collectionView.reloadItems(at: [reloadIndexPath])
-        }else {
-            self.allSitesCollectionView.reloadData()
-            self.favouritesCollectionView.reloadData()
-        }
-        CATransaction.commit()
     }
-    
-    
+
+    /// Read one saved Site before redrawing its rows in both lists.
+    private func reloadSiteData(_ site: SiteData) {
+        guard allSites.contains(where: { $0.matchesDisplayIdentity(site) }),
+              let saved = site.persistedDisplayState(account: siteAccount) else { return }
+        let oldAllGroups = allSites.map { $0.permission == .owner }
+        let oldFavouriteIDs = favouriteSites.map(\.id)
+        let oldFavouriteGroups = favouriteSites.map { $0.permission == .owner }
+        var updated: Set<ObjectIdentifier> = []
+        for target in [site] + allSites + favouriteSites where target.matchesDisplayIdentity(site) {
+            if updated.insert(ObjectIdentifier(target)).inserted {
+                target.applyPersistedDisplayState(saved, account: siteAccount)
+            }
+        }
+        if saved.isFavourite {
+            if !favouriteSites.contains(where: { $0.matchesDisplayIdentity(site) }),
+               let target = allSites.first(where: { $0.matchesDisplayIdentity(site) }) {
+                favouriteSites.append(target)
+                favouriteSites.sort { $0.create < $1.create }
+            }
+        } else {
+            favouriteSites.removeAll { $0.matchesDisplayIdentity(site) }
+        }
+        let layoutChanged = oldAllGroups != allSites.map { $0.permission == .owner }
+            || oldFavouriteIDs != favouriteSites.map(\.id)
+            || oldFavouriteGroups != favouriteSites.map { $0.permission == .owner }
+        setupSectionsData()
+        guard viewIfLoaded?.window != nil else { return }
+        if layoutChanged {
+            allSitesCollectionView.reloadData()
+            favouritesCollectionView.reloadData()
+            updateEmptyView()
+            return
+        }
+        for (sites, sections, collection) in [(allSites, allSections, allSitesCollectionView),
+                                               (favouriteSites, favouriteSections, favouritesCollectionView)] {
+            for (sectionIndex, section) in sections.enumerated() {
+                let rows = sites.filter { ($0.permission == .owner) == (section == .personal) }
+                if let row = rows.firstIndex(where: { $0.matchesDisplayIdentity(site) }) {
+                    collection?.reloadItems(at: [IndexPath(row: row, section: sectionIndex)])
+                }
+            }
+        }
+    }
+
+    private func setSiteFavourite(_ site: SiteData, isFavourite: Bool) {
+        guard site.setFavourite(isFavourite, account: siteAccount) else {
+            // The button toggles before this callback; redraw the unchanged model on failure.
+            allSitesCollectionView.reloadData()
+            favouritesCollectionView.reloadData()
+            XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+            return
+        }
+        reloadSiteData(site)
+    }
 
     private func setupUI() {
         
@@ -1346,25 +1403,9 @@ extension SitesViewController: UICollectionViewDataSource, UICollectionViewDeleg
             self.siteMenu(site: site, point: viewPoint)
         }
         cell.clickFavouriteCallback = {[weak self] isFavourite in
-            guard let self = self else { return }
-            site.isFavourite = isFavourite
-//            site.lastUpdate = Int64(Date().timeIntervalSince1970)
-            site.save()
-            if isFavourite {
-                self.favouriteSites.append(site)
-                // 创建时间排序
-                self.favouriteSites = self.favouriteSites.sorted { site1, site2 in
-                    return site1.create < site2.create
-                }
-            }else {
-                self.favouriteSites.removeAll(where: { $0.id == site.id })
-            }
-            self.setupSectionsData()
-            self.allSitesCollectionView.reloadData()
-            self.favouritesCollectionView.reloadData()
-            self.updateEmptyView()
-//            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
+            self?.setSiteFavourite(site, isFavourite: isFavourite)
         }
+
         
         return cell
     }
@@ -1455,6 +1496,12 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
     ///   - handle: 同步数据操作
     func cloudSyncManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle) {
         updateSyncState()
+        switch handle.operation {
+        case .syncSite(let site, _), .addSpaces(let site, _): scheduleSiteReload(site)
+        case .syncSpace(let space):
+            if let site = allSites.first(where: { $0.id == space.siteId }) { scheduleSiteReload(site) }
+        default: break
+        }
     }
     
     /// 同步数据成功回调
@@ -1465,13 +1512,13 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
         switch handle.operation {
         case .syncSite(let site, _):
-            reloadSiteData(site)
+            scheduleSiteReload(site)
         case .syncSpace(let space):
             if let site = allSites.first(where: { $0.id == space.siteId }) {
-                reloadSiteData(site)
+                scheduleSiteReload(site)
             }
         case .addSpaces(let site, _):
-            reloadSiteData(site)
+            scheduleSiteReload(site)
         case .syncGateway:
             break
         }
@@ -1486,13 +1533,13 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
         
         switch handle.operation {
         case .syncSite(let site, _):
-            reloadSiteData(site)
+            scheduleSiteReload(site)
         case .syncSpace(let space):
             if let site = allSites.first(where: { $0.id == space.siteId }) {
-                reloadSiteData(site)
+                scheduleSiteReload(site)
             }
         case .addSpaces(let site, _):
-            reloadSiteData(site)
+            scheduleSiteReload(site)
         default:
             break
         }
@@ -1501,5 +1548,11 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
     /// 同步数据操作取消回调
     func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle) {
         updateSyncState()
+        switch handle.operation {
+        case .syncSite(let site, _), .addSpaces(let site, _): scheduleSiteReload(site)
+        case .syncSpace(let space):
+            if let site = allSites.first(where: { $0.id == space.siteId }) { scheduleSiteReload(site) }
+        default: break
+        }
     }
 }

@@ -58,6 +58,8 @@ class SiteViewController: UIViewController {
     private let itemRowCount: Int = isIPad ? 2 : 1
     
     let site: SiteData
+    private let siteAccount = UserData.currentUserId
+    private var siteReloadScheduled = false
     /// 是否添加场所进入
     var addSite: Bool
     /// 进入space，space列表加载完成后自动跳转进入对应space页面
@@ -201,6 +203,8 @@ class SiteViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
+        site.refreshPersistedDisplayState(account: siteAccount)
+        title = site.name
 
         if GatewayDeletionContext.resume(site: site) {
             ToastStatusView.show(in: view, message: "gateway_deleted_manual_reset".localizedString,
@@ -2653,6 +2657,19 @@ self.updateAddressData()
         #endif
     }
     
+    private func scheduleSiteStateReload() {
+        guard !siteReloadScheduled, siteAccount == UserData.currentUserId,
+              site.region == UserData.currentServerRegion else { return }
+        siteReloadScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.siteReloadScheduled = false
+            guard self.site.refreshPersistedDisplayState(account: self.siteAccount) else { return }
+            self.title = self.site.name
+            self.updateSyncState()
+        }
+    }
+
     /// 更新同步状态
     private func updateSyncState() {
         guard view.window != nil else {
@@ -2693,6 +2710,8 @@ self.updateAddressData()
                     CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                 }
             }
+        } else {
+            self.hideNavigationBarState()
         }
     }
     
@@ -3714,11 +3733,13 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
         switch handle.operation {
         case .syncSpace(let space):
+            if space.siteId == site.id { scheduleSiteStateReload() }
             reloadSpaceData(space)
         case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
-            guard site.id == self.site.id else {
+            guard self.site.matchesDisplayIdentity(site) else {
                 return
             }
+            scheduleSiteStateReload()
             spaces.forEach({
                 self.reloadSpaceData($0)
             })
@@ -3739,11 +3760,13 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
         switch handle.operation {
         case .syncSpace(let space):
+            if space.siteId == site.id { scheduleSiteStateReload() }
             reloadSpaceData(space)
         case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
-            guard site.id == self.site.id else {
+            guard self.site.matchesDisplayIdentity(site) else {
                 return
             }
+            scheduleSiteStateReload()
             spaces.forEach({
                 self.reloadSpaceData($0)
             })
@@ -3763,11 +3786,13 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
         
         switch handle.operation {
         case .syncSpace(let space):
+            if space.siteId == site.id { scheduleSiteStateReload() }
             reloadSpaceData(space)
         case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
-            guard site.id == self.site.id else {
+            guard self.site.matchesDisplayIdentity(site) else {
                 return
             }
+            scheduleSiteStateReload()
             spaces.forEach({
                 self.reloadSpaceData($0)
             })
@@ -3784,9 +3809,11 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
         switch handle.operation {
         case .syncSpace(let space):
+            if space.siteId == site.id { scheduleSiteStateReload() }
             reloadSpaceData(space)
         case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
-            guard site.id == self.site.id else { return }
+            guard self.site.matchesDisplayIdentity(site) else { return }
+            scheduleSiteStateReload()
             spaces.forEach { self.reloadSpaceData($0) }
         default:
             break

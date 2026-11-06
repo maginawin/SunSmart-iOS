@@ -6,7 +6,7 @@ enum SiteCreationTextField: String, CaseIterable {
     var maximumLength: Int {
         switch self {
         case .description, .streetAddress: return 300
-        case .postalCode: return 100
+        case .postalCode: return SiteStandardProperties.postalCodeMaximumLength
         case .latitude, .longitude: return 50
         }
     }

@@ -38,16 +38,28 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
                     "-emit-module-path", str(output / "SQLite.swiftmodule")], check=True)
     methods = [block(database, marker) for marker in [
         "struct ExpressionKey {", "static func initDatabase()", "static func loadAll()",
-        "static func load(siteId: String)", "func persistedPropsState()", "static func isTautonym(", "@discardableResult func save(allData:",
+        "static func load(siteId: String,", "func persistedPropsState()", "func persistedDisplayState(", "@discardableResult func saveNewSpace(", "@discardableResult func setFavourite(", "static func isTautonym(", "@discardableResult func save(allData:",
         "@discardableResult func replaceTransferCredentials(",
         "func cloneData() -> SiteData", "static func getNextCloneSiteName("]]
-    methods += [block(model, marker) for marker in ["var isHdbSite: Bool", "func loadIsHdbSite()", "func copy() -> Self {", "var standardProperties: SiteStandardProperties {"]]
-    methods += [block(mesh, "static func add(name: String")]
-    production = "import Foundation\nimport SQLite\n" + block(mesh, "public enum DataError:")
+    methods += [block(model, marker) for marker in ["var isHdbSite: Bool", "func loadIsHdbSite()", "func copy() -> Self {", "var standardProperties: SiteStandardProperties {", "func matchesDisplayIdentity(", "@discardableResult func applyPersistedDisplayState(", "@discardableResult func refreshPersistedDisplayState(", "var needUploadCloud: Bool", "var showSyncCloudError: NetworkApiError?"]]
+    methods += [block(mesh, "static func add(name: String"), block(mesh, "func addSpace(name: String")]
+    production = "import Foundation\nimport SQLite\ntypealias Expression = SQLite.Expression\n" + block(mesh, "public enum DataError:")
     transfer = (ROOT / "SunSmart/Main/Share/Model/SiteTransferCoordinator.swift").read_text()
     production += "\n" + block(transfer, "struct SiteTransferCredentials:")
     production += "\nextension SiteData {\nprivate static let sitesTableName = \"sites\"\nprivate static let sitesTable = Table(sitesTableName)\n"
     production += "\n".join(methods) + "\n}\n"
+    space_db = database[database.index("extension SpaceData {"):]
+    space_model = (ROOT / "SunSmart/Common/Data/SpaceData.swift").read_text()
+    space_init = block(space_db, "static func initDatabase()")
+    # Unrelated tables are boundaries; the spaces schema/migrations run unchanged.
+    space_init = space_init[:space_init.index("        GroupInfo.initDatabase()")] + "}"
+    space_load = block(space_db, "static func load(siteId: String,")
+    space_load = space_load.replace("var spaces: [SpaceData] = []", "loadCount += 1; var spaces: [SpaceData] = []")
+    production += "\nextension SpaceData {\nprivate static let spacesTableName = \"spaces\"\nprivate static let spacesTable = Table(spacesTableName)\n"
+    production += "\n".join([block(space_db, "struct ExpressionKey {"), space_init, space_load,
+        block(space_db, "@discardableResult func save(importingConfiguration:"),
+        block(space_db, "@discardableResult func saveCloudSyncOutcome("),
+        block(space_model, "var needUploadCloud: Bool"), block(space_model, "var showSyncCloudError: NetworkApiError?")]) + "\n}\n"
     production += '\nextension SunSmartDataManager {\n' + block(database, 'func configurationTransaction(') + '\n}\n'
     def section(source, start, end):
         begin = source.index(start)
@@ -63,6 +75,16 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
     production += '\nextension SiteSyncReceiptFixture {\n' + block(cloud, 'private func confirmSiteUpload(').replace('private func', '@MainActor func', 1) + '\n}\n'
     production += '\nextension NetowrkReqeustApi {\n' + block(cloud, 'var configurationSiteTimestamp:') + '\n' + block(cloud, 'var initialSiteTimeZoneSubmission:') + '\n}\n'
     production += '\nenum SpaceConfigurationIntegrityPolicy {\n' + block(integrity, 'static func confirmedTimestamp(') + '\nstatic func integer(_ value: Any?) -> Int64? { (value as? NSNumber)?.int64Value }\n}\n'
+    lists = (ROOT / "SunSmart/Main/Site/Controller/SitesViewController.swift").read_text()
+    ui = "import Foundation\nextension SitesListFixture {\n"
+    for marker in ["private func reloadSiteData(", "private func scheduleSiteReload(",
+                   "private func setSiteFavourite(", "private func startCreatedSiteSynchronization(",
+                   "private func setupSectionsData()"]:
+        ui += block(lists, marker).replace("private func", "func", 1) + "\n"
+    ui += "}\n"
+    detail = (ROOT / "SunSmart/Main/Site/Controller/SiteViewController.swift").read_text()
+    ui += "extension SiteDetailFixture {\n" + block(detail, "private func scheduleSiteStateReload()").replace("private func", "func", 1) + "\n}\n"
+    (output / "SiteListUI.swift").write_text(ui)
     (output / "Production.swift").write_text(production)
     store = (output / "SiteExtensionStore.swift")
     store.write_text((ROOT / "SunSmart/Common/Data/SiteExtensionStore.swift").read_text().replace("import NordicSigMeshSDK", ""))
@@ -82,8 +104,12 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
                     str(store),
                     str(output / "SiteHDBPersistenceTests.swift"),
                     str(ROOT / "Tests/Site/SiteStandardPropsPersistenceTests.swift"),
+                    str(ROOT / "Tests/Site/SiteSpaceCreationPersistenceTests.swift"),
+                    str(ROOT / "Tests/Site/SitesListSyncStateTests.swift"), str(output / "SiteListUI.swift"),
                     "-o", str(output / "tests")], check=True)
-    subprocess.run([str(output / "tests"), str(output / "site.sqlite")], check=True)
+    subprocess.run([str(output / "tests"), str(output / "site.sqlite"), *sys.argv[2:]], check=True)
+    if "--site-list-only" in sys.argv[2:] or "--space-creation-only" in sys.argv[2:]:
+        sys.exit(0)
 
     # The same App database also owns the compact initialization receipt.
     node_model = (ROOT / "SunSmart/Common/Data/Node+SyncData.swift").read_text()

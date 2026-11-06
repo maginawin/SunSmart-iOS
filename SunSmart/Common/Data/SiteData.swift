@@ -257,6 +257,38 @@ class SiteData: Copyable {
         self.sourceType = sourceType
     }
     
+    func matchesDisplayIdentity(_ other: SiteData) -> Bool {
+        id == other.id && region == other.region && meshUUID == other.meshUUID
+            && meshNetworkId == other.meshNetworkId && create == other.create
+    }
+
+    /// Apply saved metadata without replacing runtime objects or a newer local edit.
+    @discardableResult func applyPersistedDisplayState(_ saved: SiteData, account: String) -> Bool {
+        guard account == UserData.currentUserId, region == UserData.currentServerRegion,
+              matchesDisplayIdentity(saved), state == .normal, saved.state == .normal else { return false }
+        isFavourite = saved.isFavourite
+        permission = saved.permission
+        guard saved.lastUpdate >= lastUpdate,
+              (saved.pendingSitePropsTimestamp ?? 0) >= (pendingSitePropsTimestamp ?? 0)
+                || (saved.lastUploadCloudTimestamp ?? 0) >= (pendingSitePropsTimestamp ?? 0) else { return true }
+        name = saved.name
+        imageId = saved.imageId
+        timezone = saved.timezone
+        standardProperties = saved.standardProperties
+        lastUpdate = saved.lastUpdate
+        lastUploadCloudTimestamp = saved.lastUploadCloudTimestamp
+        pendingSitePropsMask = saved.pendingSitePropsMask
+        pendingSitePropsTimestamp = saved.pendingSitePropsTimestamp
+        syncCloudError = saved.syncCloudError
+        spaceCount = saved.spaceCount
+        return true
+    }
+
+    @discardableResult func refreshPersistedDisplayState(account: String) -> Bool {
+        guard let saved = persistedDisplayState(account: account) else { return false }
+        return applyPersistedDisplayState(saved, account: account)
+    }
+
     /// Database rows do not contain the server-owned gateway presence fields.
     /// A nil change set reloads list membership; an empty set keeps current instances.
     func reloadSpacesPreservingGatewayMetadata(changedSpaceIds: Set<String>? = nil) {

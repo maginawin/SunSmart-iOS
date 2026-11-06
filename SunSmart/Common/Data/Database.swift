@@ -332,7 +332,7 @@ extension SiteData {
     /// 根据场所id获取对应场所
     /// - Parameter siteId: 场所id
     /// - Returns: 返回场所对象
-    static func load(siteId: String) -> SiteData? {
+    static func load(siteId: String, includeSpaces: Bool = true) -> SiteData? {
         
         let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == siteId && ExpressionKey.regionType == UserData.currentServerRegion.rawValue)
         
@@ -365,7 +365,9 @@ extension SiteData {
                 break
             }
         }
-        site?.spaces = SpaceData.load(siteId: siteId)
+        if includeSpaces {
+            site?.spaces = SpaceData.load(siteId: siteId)
+        }
         
         return site
     }
@@ -519,6 +521,64 @@ extension SiteData {
             standardProperties: .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
                 countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
                 city: row[ExpressionKey.city], cityId: row[ExpressionKey.cityId], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription]))
+    }
+
+    /// Refresh only this Site's row; page-owned Spaces and gateway presence stay in memory.
+    func persistedDisplayState(account: String) -> SiteData? {
+        guard account == UserData.currentUserId, region == UserData.currentServerRegion,
+              state == .normal,
+              let saved = Self.load(siteId: id, includeSpaces: false),
+              matchesDisplayIdentity(saved), saved.state == .normal else { return nil }
+        return saved
+    }
+
+    /// Save a new Space and its parent revision together, without writing stale Site properties.
+    @discardableResult func saveNewSpace(_ space: SpaceData) -> Bool {
+        let account = UserData.currentUserId
+        guard region == UserData.currentServerRegion, state == .normal, permission == .owner,
+              space.siteId == id, space.meshUUID == meshUUID,
+              let database = SunSmartDataManager.shared.db else { return false }
+        var saved: SiteData?
+        guard SunSmartDataManager.shared.configurationTransaction({
+            guard let current = self.persistedDisplayState(account: account), current.permission == .owner,
+                  current.lastUpdate >= self.lastUpdate, current.lastUpdate < Int64.max,
+                  space.save() else { throw CocoaError(.fileWriteUnknown) }
+            let timestamp = SitePropsEditPolicy.nextTimestamp(
+                now: Int64(Date().timeIntervalSince1970), current: current.lastUpdate)
+            // Pending form values are unchanged, but now belong to the new Site revision.
+            let pendingTimestamp = current.pendingSitePropsMask.isEmpty ? nil : timestamp
+            let filter = Self.sitesTable.filter(ExpressionKey.uuid == self.id
+                && ExpressionKey.regionType == self.region.rawValue
+                && ExpressionKey.meshNetworkId == self.meshNetworkId
+                && ExpressionKey.createTimestamp == self.create)
+            guard try database.run(filter.update(ExpressionKey.lastUpdateTimestamp <- timestamp,
+                ExpressionKey.pendingSitePropsTimestamp <- pendingTimestamp)) == 1 else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            current.lastUpdate = timestamp
+            current.pendingSitePropsTimestamp = pendingTimestamp
+            saved = current
+        }), let saved else { return false }
+        applyPersistedDisplayState(saved, account: account)
+        return true
+    }
+
+    /// A stale list object must never write its other fields when toggling a favourite.
+    @discardableResult func setFavourite(_ favourite: Bool, account: String) -> Bool {
+        guard account == UserData.currentUserId, region == UserData.currentServerRegion,
+              state == .normal, let database = SunSmartDataManager.shared.db else { return false }
+        let filter = Self.sitesTable.filter(ExpressionKey.uuid == id
+            && ExpressionKey.regionType == region.rawValue
+            && ExpressionKey.meshNetworkId == meshNetworkId
+            && ExpressionKey.createTimestamp == create
+            && ExpressionKey.state == State.normal.rawValue)
+        do {
+            guard try database.run(filter.update(ExpressionKey.favourite <- favourite)) == 1 else { return false }
+            isFavourite = favourite
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// 缓存当前场所数据

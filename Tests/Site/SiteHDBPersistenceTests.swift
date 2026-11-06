@@ -6,7 +6,7 @@ typealias Address = UInt16
 extension UInt16 { static let minUnicastAddress: UInt16 = 1 }
 extension String { var hex: String { self } }
 enum ServerRegion: Int { case first = 1, second = 2 }
-enum UserData { static var currentUserId = "account"; static var currentServerRegion = ServerRegion.first }
+struct UserData: Codable { static var currentUserId = "account"; static var currentServerRegion = ServerRegion.first }
 enum Permission: Int { case owner = 1, editor, visitor }
 enum DataSourceType: Int { case create = 1, clone, share }
 struct NetworkApiError: Error {
@@ -22,14 +22,6 @@ enum SiteTimeZoneCatalog {
     static func phoneDefaultValue() -> Value { Value() }
 }
 final class SunSmartDataManager { static let shared = SunSmartDataManager(); var db: Connection? }
-final class SpaceData {
-    var siteId = ""
-    static func initDatabase() {}
-    static func load(siteId: String) -> [SpaceData] { [] }
-    func copy() -> SpaceData { SpaceData() }
-    func cloneData() -> SpaceData { SpaceData() }
-    @discardableResult func save() -> Bool { true }
-}
 enum NodeSyncStatusGeneration { static var invalidations = 0; static func invalidate() { invalidations += 1 } }
 final class TestNode { func clearSyncStateCache() {} }
 final class TestNetwork { var uuid = UUID(); var nodes: [TestNode] = [] }
@@ -77,6 +69,14 @@ final class SiteData {
         let path = CommandLine.arguments[1]
         SunSmartDataManager.shared.db = try Connection(path)
         SiteData.initDatabase()
+        if CommandLine.arguments.contains("--site-list-only") {
+            try await SitesListSyncStateTests.run(path: path)
+            return
+        }
+        if CommandLine.arguments.contains("--space-creation-only") {
+            try await SiteSpaceCreationPersistenceTests.run(path: path)
+            return
+        }
         let db = SunSmartDataManager.shared.db!
         // Deleting test Sites leaves the legacy table in place: verify add-column upgrade.
         for column in SiteStandardProperties.keys { try db.execute("ALTER TABLE sites DROP COLUMN \"\(column)\";") }
@@ -158,6 +158,8 @@ final class SiteData {
         precondition(!reloaded.isHdbSite && clone.isHdbSite)
         try legacySnapshots(path: path)
         try await SiteStandardPropsPersistenceTests.run(path: path)
+        try await SitesListSyncStateTests.run(path: path)
+        try await SiteSpaceCreationPersistenceTests.run(path: path)
         UserData.currentServerRegion = .second
         precondition(SiteData.load(siteId: standard.id) == nil, "Site extension must remain region scoped")
         UserData.currentServerRegion = .first

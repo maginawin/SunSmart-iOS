@@ -5,7 +5,7 @@ import Foundation
         try testEditingDraft()
         try testCoordinateValidation()
         for (field, limit) in [(SiteCreationTextField.description, 300), (.streetAddress, 300),
-                                (.postalCode, 100), (.latitude, 50), (.longitude, 50)] {
+                                (.postalCode, 32), (.latitude, 50), (.longitude, 50)] {
             precondition(field.normalized(" \n\t ") == nil)
             precondition(field.normalized("  value \n") == "value")
             precondition(field.limitingInput("value ") == "value ", "Typing a word separator must not trim it away")
@@ -33,6 +33,9 @@ import Foundation
         draft.siteType = .hdb
         let object = try draft.standardProperties().jsonObject
         precondition(object["postalCode"] as? String == "018983")
+        draft.text[.postalCode] = "  " + String(repeating: "0", count: 32) + "extra  "
+        let limitedPostalCode = try draft.standardProperties().postalCode
+        precondition(limitedPostalCode == String(repeating: "0", count: 32))
         precondition(object["latitude"] as? String == "-1.2801")
         precondition(object["longitude"] as? String == "0.0")
         precondition(object["description"] is NSNull && object["city"] is NSNull && object["countryRegion"] is NSNull)

@@ -56,6 +56,8 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
 @main enum SiteStandardPropsIntegrationTests {
     @MainActor static func main() async throws {
         try await testMetadataEditing()
+        await testPostalCodeUploadAndRetry()
+        await testCoordinateFallbackRead()
         testFullImportBoundaries()
         let network = NetworkRequest.shared
         let site = SiteData()
@@ -98,7 +100,7 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
         let accepted = coordinator.currentState()
         let receives = SiteExtensionStore.receives, saves = site.saves
         network.result = .success(["data": ["props": ["siteName": "Invalid", "imageId": 3,
-            "updateTimestamp": 20, "longitude": "invalid", "countryRegion": "US"]]])
+            "updateTimestamp": 20, "longitude": "invalid", "countryRegion": true]]])
         _ = await coordinator.prepareDraft(online: true)
         precondition(coordinator.currentState() == accepted && site.saves == saves && SiteExtensionStore.receives == receives)
 
@@ -186,6 +188,59 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
         print("PASS: seven-field updates/clears, exact ACK, offline retry, rollback, unrelated changes, late ACK and account switch")
     }
 
+    @MainActor static func testCoordinateFallbackRead() async {
+        let site = SiteData()
+        let coordinator = SitePropsEditCoordinator(site: site)
+        let bytes = Data(#"{"data":{"props":{"siteName":"Shared Site","imageId":1,"updateTimestamp":11,"latitude":"","longitude":"113.5","city":"Imported"}}}"#.utf8)
+        NetworkRequest.shared.result = .success(try! JSONSerialization.jsonObject(with: bytes) as! [String: Any])
+        _ = await coordinator.prepareDraft(online: true)
+        precondition(site.name == "Shared Site" && site.lastUpdate == 11)
+        precondition(site.standardProperties.latitude == nil && site.standardProperties.longitude == 113.5)
+        precondition(site.standardProperties.city == "Imported" && site.saves == 1,
+                     "A props read must apply other fields and save when a coordinate falls back to nil")
+        print("PASS: production props retrieval accepts an invalid coordinate and saves the remaining properties")
+    }
+
+    @MainActor static func testPostalCodeUploadAndRetry() async {
+        let network = NetworkRequest.shared
+        let site = SiteData()
+        let coordinator = SitePropsEditCoordinator(site: site)
+        let expected = String(repeating: "0", count: 32)
+        let overlong = expected + "extra"
+        network.result = .success(["data": ["props": ["siteName": site.name, "imageId": site.imageId,
+            "updateTimestamp": 11, "postalCode": overlong]]])
+        _ = await coordinator.prepareDraft(online: true)
+        precondition(site.standardProperties.postalCode == expected && site.pendingSitePropsMask.isEmpty)
+
+        var draft = await coordinator.prepareDraft(online: false)
+        draft.standardProperties.postalCode = String(repeating: "1", count: 33)
+        let plan = coordinator.makeCommitPlan(draft: draft, online: true, now: 12)
+        guard case .success(let edited?) = coordinator.persist(plan) else { preconditionFailure() }
+        precondition(edited.standardProperties.postalCode == String(repeating: "1", count: 32))
+        precondition(site.standardProperties.postalCode == edited.standardProperties.postalCode)
+
+        // A pending value saved by an older App can bypass today's form validation.
+        site.standardProperties.postalCode = overlong
+        let retryDraft = await coordinator.prepareDraft(online: false)
+        let retry = coordinator.makeCommitPlan(draft: retryDraft, online: true, now: 13).updateSnapshot!
+        network.result = .failure(.unknown)
+        let failed = await coordinator.submit(retry)
+        precondition(!failed && site.pendingSitePropsMask == .postalCode && site.pendingSitePropsTimestamp == 12)
+        guard case .sitePropsUpdate(_, let props) = network.targets.last! else { preconditionFailure() }
+        precondition(props["postalCode"] as? String == expected && props.count == 2)
+
+        for response: [String: Any] in [["updateTimestamp": 12], ["updateTimestamp": 12, "postalCode": "different"]] {
+            network.result = .success(["data": response])
+            let accepted = await coordinator.submit(retry)
+            precondition(!accepted && site.pendingSitePropsMask == .postalCode)
+        }
+        network.result = .success(["data": props])
+        let accepted = await coordinator.submit(retry)
+        precondition(accepted && site.pendingSitePropsMask.isEmpty && site.pendingSitePropsTimestamp == nil)
+        precondition(site.standardProperties.postalCode == expected && site.lastUploadCloudTimestamp == 12)
+        print("PASS: Postal Code read/edit truncation, legacy upload cap, failed retry and exact truncated ACK")
+    }
+
     static func testFullImportBoundaries() {
         let site = SiteData()
         let original = site.standardProperties
@@ -221,8 +276,9 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
         precondition(site.importFixture(siteJsonData: data))
         precondition(site.standardProperties.city == "795565", "Late full response must not replace newer fields")
         let saves = site.saves
-        data["latitude"] = true
+        data["cityId"] = true
         precondition(!site.importFixture(siteJsonData: data) && site.saves == saves)
+        data.removeValue(forKey: "cityId")
         data["latitude"] = 0
         data["updateTimestamp"] = 24
         site.pendingSitePropsMask = [.timezone]

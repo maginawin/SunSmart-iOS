@@ -27,6 +27,9 @@ final class SiteSyncReceiptFixture {
         case addSpaces(SiteData, [SpaceData])
         case other
     }
+    static let validAddResponse: [String: Any] = ["data": ["addrLists": [
+        "ownerDevicesAddress": 5000, "ownerGroupsAddress": 3200, "ownerScenesAddress": 1600
+    ]]]
     let operation: Operation
     init(_ site: SiteData, addingSpaces: Bool = false) {
         operation = addingSpaces ? .addSpaces(site, []) : .syncSite(site, [])
@@ -43,6 +46,8 @@ extension SiteData {
         try await cityPendingSurvivesFullUploadReceipt(path: path)
         try transferCacheLifetime(path: path)
         try coordinateStringImport(path: path)
+        try coordinateFallbackImport(path: path)
+        try postalCodeImportPersistence(path: path)
         try equalVersionReplacement(path: path)
         try legacyMissingFields(path: path)
         try listSummaryPreservesMissingFields(path: path)
@@ -80,6 +85,30 @@ extension SiteData {
         try await propsReadbackAndReceipts(siteID: site.id, path: path)
         try failedImportAndRetry(siteID: site.id, path: path)
         print("PASS: SQLite detail import -> fresh export -> stale upload receipt -> restart, partial fields and explicit null")
+    }
+
+    static func postalCodeImportPersistence(path: String) throws {
+        for source in [SiteImportSource.completeDetail, .listSummary] {
+            let site = try SiteData.add(name: "Postal Code", timezone: nil,
+                                       standardProperties: .init(postalCode: "00123"))
+            let expected = String(repeating: "中", count: 32)
+            let bytes = try JSONSerialization.data(withJSONObject: ["uuid": site.id, "siteName": site.name,
+                "updateTimestamp": site.lastUpdate + 1, "postalCode": expected + "extra"])
+            let payload = try JSONSerialization.jsonObject(with: bytes) as! [String: Any]
+            let db = SunSmartDataManager.shared.db!
+            try db.execute("CREATE TRIGGER fail_postal BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+            precondition(!site.importFixture(siteJsonData: payload, source: source))
+            precondition(site.postalCode == "00123" && SiteData.load(siteId: site.id)!.postalCode == "00123")
+            try db.execute("DROP TRIGGER fail_postal")
+            precondition(site.importFixture(siteJsonData: payload, source: source))
+            SunSmartDataManager.shared.db = try Connection(path)
+            let restarted = SiteData.load(siteId: site.id)!
+            precondition(restarted.postalCode == expected && restarted.pendingSitePropsMask.isEmpty)
+            let exported = try JSONSerialization.data(withJSONObject: restarted.standardProperties.jsonObject)
+            let object = try JSONSerialization.jsonObject(with: exported) as! [String: Any]
+            precondition(object["postalCode"] as? String == expected)
+        }
+        print("PASS: Postal Code list/detail import, failed-save retry, SQLite restart and JSON export")
     }
 
     static func invalidTimeZonePersistence(path: String) async throws {
@@ -319,10 +348,10 @@ extension SiteData {
             let payload: [String: Any] = ["updateTimestamp": submitted, "city": "Before", "cityId": 1]
             let api: NetowrkReqeustApi = addingSite ? .siteAdd(siteData: payload, useDeivceAddressNum: 0) : .siteUpload(siteData: payload)
             try SunSmartDataManager.shared.db!.execute("CREATE TRIGGER fail_old_receipt BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
-            precondition(!receipt.confirmSiteUpload(api: api, response: [:]))
+            precondition(!receipt.confirmSiteUpload(api: api, response: SiteSyncReceiptFixture.validAddResponse))
             precondition(SiteData.load(siteId: site.id)!.persistedPropsState() == expected)
             try SunSmartDataManager.shared.db!.execute("DROP TRIGGER fail_old_receipt")
-            precondition(receipt.confirmSiteUpload(api: api, response: [:]))
+            precondition(receipt.confirmSiteUpload(api: api, response: SiteSyncReceiptFixture.validAddResponse))
             SunSmartDataManager.shared.db = try Connection(path)
             let restarted = SiteData.load(siteId: site.id)!
             precondition(restarted.city == "After" && restarted.cityId == 2)
@@ -389,6 +418,39 @@ extension SiteData {
         print("PASS: string-coordinate Site import -> SQLite reopen -> string JSON export")
     }
 
+    static func coordinateFallbackImport(path: String) throws {
+        let site = try SiteData.add(name: "Coordinate fallback", timezone: nil)
+        let initial: [String: Any] = ["uuid": site.id, "siteName": site.name,
+            "updateTimestamp": site.lastUpdate, "latitude": "22.5", "longitude": "113.5", "city": "Keep"]
+        precondition(site.importFixture(siteJsonData: initial))
+        for (json, source, expectedLatitude, expectedLongitude) in [
+            (#"{"latitude":"","longitude":"114"}"#, SiteImportSource.listSummary, nil as Double?, 114.0 as Double?),
+            (#"{}"#, .listSummary, nil, 114.0),
+            (#"{"latitude":"22.5","longitude":false}"#, .listSummary, 22.5, nil),
+            (#"{"latitude":"","longitude":""}"#, .completeDetail, nil, nil)
+        ] {
+            let importer = SiteData.load(siteId: site.id)!
+            var payload = try JSONSerialization.jsonObject(with: Data(json.utf8)) as! [String: Any]
+            payload["uuid"] = site.id
+            payload["siteName"] = site.name
+            payload["updateTimestamp"] = importer.lastUpdate + 1
+            precondition(importer.importFixture(siteJsonData: payload, source: source))
+            SunSmartDataManager.shared.db = try Connection(path)
+            let reopened = SiteData.load(siteId: site.id)!
+            precondition(reopened.latitude == expectedLatitude && reopened.longitude == expectedLongitude,
+                         "Coordinate fallback and omitted-field handling must survive SQLite reopen")
+            if source == .listSummary { precondition(reopened.city == "Keep") }
+            precondition(SiteData.loadAll().contains(where: { $0.id == site.id }))
+            let bytes = try JSONSerialization.data(withJSONObject: reopened.standardProperties.jsonObject)
+            let exported = try JSONSerialization.jsonObject(with: bytes) as! [String: Any]
+            for (key, expected) in [("latitude", expectedLatitude), ("longitude", expectedLongitude)] {
+                if let expected { precondition(exported[key] as? String == String(expected)) }
+                else { precondition(exported[key] is NSNull) }
+            }
+        }
+        print("PASS: invalid-coordinate JSON import, independent fallback, partial omission, SQLite reopen and string/null export")
+    }
+
     static func propsReadbackAndReceipts(siteID: String, path: String) async throws {
         let staleEditorSite = SiteData.load(siteId: siteID)!
         let staleEditor = SitePropsEditCoordinator(site: staleEditorSite)
@@ -410,7 +472,7 @@ extension SiteData {
         precondition(addSpaces.confirmSiteUpload(api: .siteUpload(siteData: ["updateTimestamp": readerSite.lastUpdate]), response: [:]))
         let addSite = SiteSyncReceiptFixture(oldAddSite)
         precondition(addSite.confirmSiteUpload(api: .siteAdd(siteData: [
-            "updateTimestamp": oldAddSite.lastUpdate, "timezone": oldAddSite.timezone!], useDeivceAddressNum: 0), response: [:]))
+            "updateTimestamp": oldAddSite.lastUpdate, "timezone": oldAddSite.timezone!], useDeivceAddressNum: 0), response: SiteSyncReceiptFixture.validAddResponse))
         precondition(oldAddSite.pendingSitePropsMask.isEmpty && oldAddSite.pendingSitePropsTimestamp == nil)
         precondition(SiteData.load(siteId: siteID)!.standardProperties == fresh)
 
@@ -456,7 +518,7 @@ extension SiteData {
         let db = SunSmartDataManager.shared.db!
         try db.execute("CREATE TRIGGER fail_site BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
         let payload: [String: Any] = ["uuid": siteID, "siteName": "Imported",
-            "updateTimestamp": timestamp + 2, "city": NSNull(), "latitude": NSNull()]
+            "updateTimestamp": timestamp + 2, "city": NSNull(), "latitude": "", "longitude": "invalid"]
         precondition(!importer.importFixture(siteJsonData: payload))
         precondition(importer.standardProperties == previous && importer.lastUpdate == timestamp)
         precondition(SiteData.load(siteId: siteID)!.standardProperties == previous)
@@ -466,6 +528,6 @@ extension SiteData {
         precondition(cleared.city == nil && cleared.latitude == nil && cleared.longitude == nil)
         SunSmartDataManager.shared.db = try Connection(path)
         precondition(SiteData.load(siteId: siteID)!.standardProperties == cleared)
-        print("PASS: SQLite failed metadata import rollback, explicit clear retry and restart")
+        print("PASS: SQLite failed coordinate-fallback import rollback, retry and restart")
     }
 }

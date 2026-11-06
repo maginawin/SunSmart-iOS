@@ -13,6 +13,8 @@ extension SiteData {
     static var hdbSite: Bool { get { hdbEnabled } set { hdbEnabled = newValue } }
     var meshUUID: String { "11111111-1111-4111-8111-111111111111" }
     var lastUpdate: Int64 { get { 1 } set {} }
+    // Real Site/Space SQL atomicity is covered by SiteSpaceCreationPersistenceTests.
+    func saveNewSpace(_ space: SpaceData) -> Bool { space.save() }
 }
 extension SpaceData {
     convenience init(name: String, id: String, siteId: String, imageId: Int, create: Int64,

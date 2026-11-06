@@ -1301,6 +1301,8 @@ class CloudSynchronizationHandle: NSObject {
         // Reconcile persisted form state before acknowledging only the submitted version.
         // Use the raw stored timezone here so even an unrecognized legacy value is preserved.
         if let current = SiteData.load(siteId: site.id), current.lastUpdate >= site.lastUpdate {
+            // Favourite changes do not advance the upload version, but must survive its receipt.
+            site.isFavourite = current.isFavourite
             site.name = current.name
             site.imageId = current.imageId
             site.timezone = current.timezone

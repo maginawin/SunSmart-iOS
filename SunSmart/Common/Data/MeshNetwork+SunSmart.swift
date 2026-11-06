@@ -88,6 +88,8 @@ extension SiteData {
     /// - Returns: 空间
     func addSpace(name: String, id: String = UUID().uuidString, imageId: Int = 1) throws -> SpaceData? {
         precondition(Thread.isMainThread)
+        // Reject a repeated identity before allocating anything that failure cleanup could remove.
+        guard SpaceData.load(siteId: self.id, spaceId: id).isEmpty else { throw HDBConfigurationError.persistenceFailed }
         let initializeHDB = try loadIsHdbSite()
             && FeatureVisibility.shared.isVisible(.spaceHDBConfiguration, permission: .owner)
         let addresses = initializeHDB
@@ -101,14 +103,13 @@ extension SiteData {
         let space = SpaceData(name: name, id: id, siteId: self.id, imageId: imageId, create: time, isFavourite: false, permission: .owner, sourceType: .create, meshUUID: self.meshUUID, meshNetworkId: subnetworkData.networkKey.networkId.hex)
         do {
             if initializeHDB { try HDBConfigurationStore.initializeLightingZones(space: space, addresses: addresses) }
-            guard space.save() else { throw HDBConfigurationError.persistenceFailed }
+            guard saveNewSpace(space) else { throw HDBConfigurationError.persistenceFailed }
         } catch {
             // Reuse normal subnet/Group cleanup and its existing interrupted-removal recovery.
             _ = space.delete()
             throw error
         }
         spaces.append(space)
-        lastUpdate = Int64(Date().timeIntervalSince1970)
         return space
     }
 

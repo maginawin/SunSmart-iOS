@@ -8,6 +8,8 @@ enum SiteImportSource {
 
 /// Standard Site properties shared by creation, full sync and partial props reads.
 struct SiteStandardProperties: Equatable {
+    static let postalCodeMaximumLength = 32
+
     var latitude: Double?
     var longitude: Double?
     var countryRegion: String?
@@ -30,10 +32,18 @@ struct SiteStandardProperties: Equatable {
     }
 
     var jsonObject: [String: Any] {
+        let normalized = limitingPostalCode()
         var result: [String: Any] = ["latitude": latitude.map { String($0) } as Any? ?? NSNull(),
                                      "longitude": longitude.map { String($0) } as Any? ?? NSNull()]
-        for (key, path) in Self.textFields { result[key] = self[keyPath: path] as Any? ?? NSNull() }
+        for (key, path) in Self.textFields { result[key] = normalized[keyPath: path] as Any? ?? NSNull() }
         result["cityId"] = cityId as Any? ?? NSNull()
+        return result
+    }
+
+    /// Keep complete characters intact and preserve existing null/whitespace semantics.
+    private func limitingPostalCode() -> Self {
+        var result = self
+        result.postalCode = postalCode.map { String($0.prefix(Self.postalCodeMaximumLength)) }
         return result
     }
 
@@ -70,7 +80,7 @@ struct SiteStandardProperties: Equatable {
         init() {}
 
         fileprivate init(values: SiteStandardProperties, fields: SitePropsFieldMask) {
-            self.values = values
+            self.values = values.limitingPostalCode()
             provided = Set(SitePropsFieldMask.standardFields.compactMap { fields.contains($0.value) ? $0.key : nil })
         }
 
@@ -81,7 +91,8 @@ struct SiteStandardProperties: Equatable {
 
         func confirms(_ expected: SiteStandardProperties, fields: SitePropsFieldMask) -> Bool {
             let required = Set(SitePropsFieldMask.standardFields.compactMap { fields.contains($0.value) ? $0.key : nil })
-            return required.isSubset(of: provided) && values.changedFields(from: expected).intersection(fields).isEmpty
+            return required.isSubset(of: provided)
+                && values.changedFields(from: expected.limitingPostalCode()).intersection(fields).isEmpty
         }
 
         init(_ object: [String: Any]) throws {
@@ -100,6 +111,7 @@ struct SiteStandardProperties: Equatable {
                 guard let text = raw as? String else { throw ParseError.invalidField(key) }
                 values[keyPath: path] = text
             }
+            values = values.limitingPostalCode()
             for key in ["latitude", "longitude"] {
                 guard let raw = object[key] else { continue }
                 provided.insert(key)
@@ -113,10 +125,11 @@ struct SiteStandardProperties: Equatable {
                     // Accept numeric strings as well as older numeric Site responses.
                     value = number
                 } else {
-                    throw ParseError.invalidField(key)
+                    // A present but invalid coordinate clears only that field.
+                    continue
                 }
                 let range: ClosedRange<Double> = key == "latitude" ? -90...90 : -180...180
-                guard value.isFinite, range.contains(value) else { throw ParseError.invalidField(key) }
+                guard value.isFinite, range.contains(value) else { continue }
                 if key == "latitude" { values.latitude = value } else { values.longitude = value }
             }
         }

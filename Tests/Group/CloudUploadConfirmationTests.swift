@@ -11,6 +11,7 @@ final class SiteData {
     let id = "fixture-site", meshUUID = "fixture-mesh"
     static func load(siteId: String) -> SiteData? { nil } // SQLite behavior is covered by SiteStandardPropsPersistenceTests.
     var standardProperties = SiteStandardProperties()
+    var isFavourite = false
     var name = "Site", imageId = 1, timezone: String?
     var lastUpdate: Int64 = 100, lastUploadCloudTimestamp: Int64?
     var pendingSitePropsMask: SitePropsFieldMask = []

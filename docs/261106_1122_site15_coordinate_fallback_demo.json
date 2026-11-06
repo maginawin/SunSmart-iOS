@@ -1,0 +1,457 @@
+{
+  "purpose": "Review coordinate fallback semantics before implementation; coordinate fragments only, not complete Site payloads.",
+  "assumptions": [
+    "The incoming Site version and existing conflict rules allow this patch to be applied.",
+    "Other Site fields are valid; only coordinate handling is demonstrated.",
+    "latitude and longitude are handled independently.",
+    "Local null means Swift nil and SQLite NULL; valid values remain Double.",
+    "Export remains a numeric string for a valid value and JSON null for an empty value; missing fields retain their existing source-specific semantics."
+  ],
+  "changes": {
+    "databaseSchema": "unchanged",
+    "exportKeysAndTypes": "unchanged: latitude and longitude are string or null",
+    "incomingCoordinateSemantics": "Any present coordinate that cannot be parsed as a finite, in-range, non-boolean number becomes null instead of rejecting the Site.",
+    "automaticMigration": "none"
+  },
+  "cases": [
+    {
+      "id": "valid_strings",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": "22.634437",
+        "longitude": "113.931436"
+      },
+      "before": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 22.634437,
+          "longitude": 113.931436
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.634437",
+          "longitude": "113.931436"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 22.634437,
+          "longitude": 113.931436
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.634437",
+          "longitude": "113.931436"
+        }
+      }
+    },
+    {
+      "id": "valid_numbers_and_zero",
+      "source": "completeDetail",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": 0,
+        "longitude": -180
+      },
+      "before": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 0,
+          "longitude": -180
+        },
+        "nextExportCoordinates": {
+          "latitude": "0.0",
+          "longitude": "-180.0"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 0,
+          "longitude": -180
+        },
+        "nextExportCoordinates": {
+          "latitude": "0.0",
+          "longitude": "-180.0"
+        }
+      }
+    },
+    {
+      "id": "empty_strings",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": "",
+        "longitude": ""
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "whitespace_strings",
+      "source": "completeDetail",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": " \n",
+        "longitude": "\t"
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "invalid_latitude_valid_longitude",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": "invalid",
+        "longitude": "113.5"
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": "113.5"
+        }
+      }
+    },
+    {
+      "id": "valid_latitude_invalid_longitude",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": "22.5",
+        "longitude": "invalid"
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "unexpected_json_types",
+      "source": "completeDetail",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": true,
+        "longitude": [
+          113.5
+        ]
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "object_coordinate",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": {
+          "value": 22.5
+        }
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": "113.5"
+        }
+      }
+    },
+    {
+      "id": "nonfinite_numeric_strings",
+      "source": "completeDetail",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": "NaN",
+        "longitude": "1e9999"
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "out_of_range",
+      "source": "completeDetail",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": "91",
+        "longitude": "181"
+      },
+      "before": {
+        "blockedByCoordinateValidation": true,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "explicit_null",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {
+        "latitude": null,
+        "longitude": null
+      },
+      "before": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    },
+    {
+      "id": "omitted_partial_response",
+      "source": "listSummary",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {},
+      "before": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": 22.5,
+          "longitude": 113.5
+        },
+        "nextExportCoordinates": {
+          "latitude": "22.5",
+          "longitude": "113.5"
+        }
+      }
+    },
+    {
+      "id": "omitted_complete_detail",
+      "source": "completeDetail",
+      "localCoordinatesBefore": {
+        "latitude": 22.5,
+        "longitude": 113.5
+      },
+      "incomingCoordinates": {},
+      "before": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      },
+      "after": {
+        "blockedByCoordinateValidation": false,
+        "localCoordinatesAfter": {
+          "latitude": null,
+          "longitude": null
+        },
+        "nextExportCoordinates": {
+          "latitude": null,
+          "longitude": null
+        }
+      }
+    }
+  ]
+}
