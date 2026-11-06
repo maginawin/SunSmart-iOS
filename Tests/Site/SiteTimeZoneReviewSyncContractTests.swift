@@ -144,46 +144,13 @@ struct SiteTimeZoneReviewSyncContractTests {
             from: "private func pendingTimeZoneSyncGatewayIDs()",
             to: "private func makeGatewayListItems("
         )
-        let onsiteReviewFlow = showReviewFlow + pendingReviewFlow
-        let missingRemoteShowGuard = sourceSection(
-            in: showReviewFlow,
-            from: "private func showSyncGatewaysPage()",
-            to: "let projection = gatewayTimeZoneReviewProjection(from: remote)"
-        )
-        let hiddenProjectionShowGuard = sourceSection(
-            in: showReviewFlow,
-            from: "let projection = gatewayTimeZoneReviewProjection(from: remote)",
-            to: "guard let meshNetwork = sitePrimaryMeshNetwork()"
-        )
         require(
-            missingRemoteShowGuard.contains("invalidateGatewayTimeZoneReview()") &&
-                hiddenProjectionShowGuard.contains("invalidateGatewayTimeZoneReview()") &&
-                !hiddenProjectionShowGuard.contains("if gatewayTimeZoneReviewContext != nil"),
-            "A Review action without remote data or an actionable target must unconditionally hide stale UI"
-        )
-        require(
-            occurrences(
-                of: "confirmedOffsetMinutesByGatewayID: confirmedGatewayOffsetMinutesByID",
-                in: onsiteReviewFlow
-            ) == 2,
-            "Both onsite Review target builders must receive the in-memory confirmed offsets"
-        )
-        require(
-            occurrences(
-                of: "requiredGatewayIDs: reviewContext?.failedGatewayIDs",
-                in: onsiteReviewFlow
-            ) == 2 &&
-                occurrences(
-                    of: "gatewayTimeZoneReviewProjection(from: remote)",
-                    in: onsiteReviewFlow
-                ) == 2 &&
-                onsiteReviewFlow.contains("reviewContext: reviewContext"),
-            "Onsite Review must consume the explicit failed-ID context and its target timezone"
-        )
-        require(
-            showReviewFlow.contains("invalidateGatewayTimeZoneReview()") &&
-                !onsiteReviewFlow.contains("resolveGatewayReviewTargetTimeZone("),
-            "A hidden or empty explicit Review action must use the atomic invalidation path"
+            showReviewFlow.contains("finishGatewayReviewRoute(.unavailable(.missingSnapshot))") &&
+                showReviewFlow.contains("finishGatewayReviewRoute(.unavailable(.changedContext))") &&
+                showReviewFlow.contains("evaluation: review.evaluation") &&
+                showReviewFlow.contains("reviewContext: reviewContext") &&
+                pendingReviewFlow.contains("currentGatewayReview()?.evaluation.pendingGatewayIDs"),
+            "Route and Gateway colors must consume the same evaluated targets; unavailable routes provide feedback"
         )
         require(
             !pendingReviewFlow.contains("gatewayTimeZoneReviewContext =") &&
@@ -247,61 +214,17 @@ struct SiteTimeZoneReviewSyncContractTests {
             to: "private func effectiveGatewayOffsetOverrides("
         )
         require(
-            refreshReviewProjectionFlow.contains("guard let remote = latestTimeZoneRemoteSnapshot else") &&
-                appearsInOrder(
-                    [
-                        "let projection = gatewayTimeZoneReviewProjection(from: remote)",
-                        "guard let targetTimeZone = projection.targetTimeZone else",
-                        "invalidateGatewayTimeZoneReview()",
-                        "let localGatewayContext = SiteGatewayCloudTimeZoneLocalContextBuilder.make(",
-                        "site: site",
-                        "remoteSnapshot: remote",
-                        "targetTimeZone: targetTimeZone",
-                        "applyTimeZoneReviewState(",
-                        "from: remote",
-                        "localDirtyOffsetMinutesByGatewayID:",
-                        "localGatewayContext.dirtyOverridesByID.mapValues(\\.offsetMinutes)"
-                    ],
-                    in: refreshReviewProjectionFlow
-                ) &&
-                occurrences(
-                    of: "applyTimeZoneReviewState(",
-                    in: refreshReviewProjectionFlow
-                ) == 1 &&
-                !refreshReviewProjectionFlow.contains(
-                    "applyTimeZoneReviewState(from: remote)"
-                ),
-            "Lifecycle refresh must capture dirty offsets for the actionable projection target before applying Review state"
-        )
-        let applyReviewFlows = sourceSection(
-            in: siteController,
-            from: "private func applyTimeZoneReviewState(",
-            to: "private func setTimeZoneReviewState("
+            refreshReviewProjectionFlow.contains("let review = currentGatewayReview()") &&
+                refreshReviewProjectionFlow.contains("updateTimeZoneReviewState(review)") &&
+                refreshReviewProjectionFlow.contains("review?.evaluation.summary"),
+            "Header and overlay refresh must consume the shared current evaluation"
         )
         require(
-            occurrences(
-                of: "switch gatewayTimeZoneReviewProjection(from: remote)",
-                in: applyReviewFlows
-            ) == 1 &&
-                occurrences(of: "case .hidden:", in: applyReviewFlows) == 1 &&
-                occurrences(of: "case .explicit(let context):", in: applyReviewFlows) == 1 &&
-                applyReviewFlows.contains("invalidateGatewayTimeZoneReview()") &&
-                occurrences(
-                    of: "private func applyTimeZoneReviewState(",
-                    in: siteController
-                ) == 1,
-            "The single Review-state application path must consume the pure projection and explicitly invalidate hidden state"
-        )
-        require(
-            appearsInOrder(
-                [
-                    "var offsets = localDirtyOffsetMinutesByGatewayID",
-                    "confirmedGatewayOffsetMinutesByID.forEach",
-                    "offsets[id] = offset"
-                ],
-                in: effectiveOverrides
-            ) && effectiveOverrides.contains("localDirtyOffsetMinutesByGatewayID: effectiveGatewayOffsetOverrides("),
-            "Review state must resolve Gateway offsets as confirmed, then dirty, then remote"
+            appearsInOrder([
+                "var offsets = localDirtyOffsetMinutesByGatewayID",
+                "confirmedGatewayOffsetMinutesByID.forEach", "offsets[id] = offset"
+            ], in: effectiveOverrides),
+            "Entry offset overrides must preserve confirmed precedence"
         )
 
         let gatewayDetailConfirmationFlow = sourceSection(

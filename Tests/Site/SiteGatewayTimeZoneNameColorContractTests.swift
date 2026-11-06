@@ -51,7 +51,7 @@ struct SiteGatewayTimeZoneNameColorContractTests {
             siteController.contains("private func pendingTimeZoneSyncGatewayIDs() -> Set<String>"),
             "Site controller must expose one read-only pending ID query"
         )
-        require(siteController.contains("SyncGatewaysContextBuilder.makeTargets("))
+        require(siteController.contains("currentGatewayReview()?.evaluation.pendingGatewayIDs"))
         require(
             siteController.contains("private func makeGatewayListItems("),
             "All horizontal Gateway items must use one builder"

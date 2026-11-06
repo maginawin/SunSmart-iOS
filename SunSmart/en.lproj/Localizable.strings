@@ -2124,6 +2124,9 @@
 "gateway_not_connected" = "Gateway not connected";
 "site_entry_sync_gateway_time_zone" = "Gateway time zone";
 "site_entry_sync_no_gateways" = "No gateways to sync";
+"site_entry_sync_offset_unavailable" = "Unable to check the gateway time zone. Refresh the Site to try again.";
+"site_entry_sync_context_changed" = "The Site settings or your access have changed. Refresh the Site and try again.";
+"site_entry_sync_review_unavailable" = "Unable to open gateway sync. Refresh the Site and try again.";
 "site_entry_sync_gateways_need_sync" = "%d gateways need time zone sync";
 "site_entry_sync_gateways_in_sync" = "All gateways are in sync";
 "site_entry_sync_later" = "LATER";

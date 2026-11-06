@@ -82,6 +82,7 @@ enum SiteGatewayCloudTimeZoneLocalContextBuilder {
             subnetworkId: site.meshNetworkId
         )
         var namesByID: [String: String] = [:]
+        var currentDirtyOffsetsByID: [String: Int] = [:]
         var dirtyCandidates: [SyncGatewayDirtyTimeCandidate] = []
 
         models.forEach { gateway in
@@ -93,6 +94,9 @@ enum SiteGatewayCloudTimeZoneLocalContextBuilder {
             }
             let node = gateway.resolveNode(in: meshNetwork)
             namesByID[id] = gateway.name
+            if gateway.needUploadCloud, let offset = node?.timezone?.secondsFromGMT() {
+                currentDirtyOffsetsByID[id] = offset / 60
+            }
             dirtyCandidates.append(
                 SyncGatewayDirtyTimeCandidate(
                     id: id,
@@ -114,7 +118,7 @@ enum SiteGatewayCloudTimeZoneLocalContextBuilder {
         ) { result, pair in
             result[pair.key] = SiteGatewayCloudTimeZoneLocalSnapshot(
                 displayName: pair.value,
-                dirtyOffsetMinutes: dirtyOverridesByID[pair.key]?.offsetMinutes
+                dirtyOffsetMinutes: currentDirtyOffsetsByID[pair.key]
             )
         }
         return SiteGatewayCloudTimeZoneLocalContext(

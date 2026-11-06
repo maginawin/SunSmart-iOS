@@ -101,7 +101,8 @@ enum SyncGatewaysContextBuilder {
         meshNetwork: MeshNetwork,
         gatewayModels: [GatewayModel],
         confirmedOffsetMinutesByGatewayID: [String: Int] = [:],
-        requiredGatewayIDs: Set<String>? = nil
+        requiredGatewayIDs: Set<String>? = nil,
+        evaluation: SiteEntryGatewayEvaluation? = nil
     ) -> [SyncGatewayRuntimeTarget] {
         var modelsByID: [String: GatewayModel] = [:]
         gatewayModels.forEach { model in
@@ -124,7 +125,7 @@ enum SyncGatewaysContextBuilder {
                     : nil
             )
         }
-        let entryTargets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+        let entryTargets = evaluation?.targets ?? SiteGatewayCloudTimeZoneTargetBuilder.build(
             targetOffsetMinutes: targetTimeZone.offsetMinutes,
             remote: remote,
             localByGatewayID: localSnapshots,
@@ -150,7 +151,7 @@ enum SyncGatewaysContextBuilder {
                 )
             },
             localAvailabilityByGatewayID: availability,
-            requiredGatewayIDs: requiredGatewayIDs
+            requiredGatewayIDs: evaluation?.pendingGatewayIDs ?? requiredGatewayIDs
         )
         return descriptors.map { descriptor in
             let gateway = modelsByID[descriptor.id]
@@ -170,7 +171,8 @@ enum SyncGatewaysContextBuilder {
         meshNetwork: MeshNetwork,
         gatewayModels: [GatewayModel],
         confirmedOffsetMinutesByGatewayID: [String: Int] = [:],
-        requiredGatewayIDs: Set<String>? = nil
+        requiredGatewayIDs: Set<String>? = nil,
+        evaluation: SiteEntryGatewayEvaluation? = nil
     ) -> SyncGatewaysContext {
         let targets = makeTargets(
             targetTimeZone: targetTimeZone,
@@ -179,7 +181,8 @@ enum SyncGatewaysContextBuilder {
             gatewayModels: gatewayModels,
             confirmedOffsetMinutesByGatewayID:
                 confirmedOffsetMinutesByGatewayID,
-            requiredGatewayIDs: requiredGatewayIDs
+            requiredGatewayIDs: requiredGatewayIDs,
+            evaluation: evaluation
         )
 
         let keyResolution = GatewayFirmwareScanNetworkKeyScopePolicy.resolve(

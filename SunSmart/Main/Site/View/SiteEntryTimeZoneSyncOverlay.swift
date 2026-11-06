@@ -77,7 +77,7 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         switch result.gateway {
         case .pending:
             update(state: .gatewaysNeedSync(result))
-        case .noGateways, .inSync:
+        case .noGateways, .inSync, .unavailable:
             update(state: .result(result))
         }
     }
@@ -312,11 +312,13 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
                 format: "site_entry_sync_gateways_need_sync".localizedString,
                 count
             )
+        case .unavailable:
+            gatewayMessage = "site_entry_sync_offset_unavailable".localizedString
         }
         gatewayRow.update(
             title: "site_entry_sync_gateway_time_zone".localizedString,
             message: gatewayMessage,
-            style: needsSync ? .warning : .success
+            style: needsSync || result.gateway == .unavailable ? .warning : .success
         )
     }
 

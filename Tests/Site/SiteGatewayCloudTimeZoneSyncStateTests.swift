@@ -22,6 +22,7 @@ struct SiteGatewayCloudTimeZoneSyncStateTests {
         testReviewProjectionHidesWhenExplicitLocalTargetChanges()
         testReviewProjectionAllowsMatchingOrdinaryRemoteTarget()
         testReviewProjectionHidesVisitorAndInvalidTimeZones()
+        testExplicitTargetSurvivesMissingRemoteTimezone()
         print("SiteGatewayCloudTimeZoneSyncStateTests passed")
     }
 
@@ -348,6 +349,15 @@ struct SiteGatewayCloudTimeZoneSyncStateTests {
             projection == .remote(target),
             "Without explicit failures, only a local Site matching the remote Site may expose ordinary Review"
         )
+    }
+
+    private static func testExplicitTargetSurvivesMissingRemoteTimezone() {
+        let target = timeZone()
+        let context = SiteGatewayTimeZoneReviewContext(targetTimeZone: target, failedGatewayIDs: ["failed"])
+        require(SiteGatewayTimeZoneReviewProjectionPolicy.project(
+            localTimeZone: target, remote: remote(role: .owner, timezone: nil, gateways: []),
+            explicitContext: context) == .explicit(context),
+            "A confirmed explicit target must remain reviewable while the remote Site timezone is missing")
     }
 
     private static func testReviewProjectionHidesVisitorAndInvalidTimeZones() {

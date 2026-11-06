@@ -21,6 +21,71 @@ enum SiteEntryGatewaySummary: Equatable {
     case noGateways
     case pending(Int)
     case inSync
+    case unavailable
+}
+
+/// One comparison instant, shared by the entry result, header and review route.
+/// A missing Site offset is not evidence that a Gateway needs another TimeSet.
+struct SiteEntryGatewayEvaluation: Equatable {
+    let targetOffsetMinutes: Int?
+    let targets: [SiteGatewayCloudTimeZoneTarget]
+    let pendingGatewayIDs: Set<String>
+    let summary: SiteEntryGatewaySummary
+
+    init(
+        targetOffsetMinutes: Int?,
+        remote: SiteEntryTimeZoneRemoteSnapshot,
+        localByGatewayID: [String: SiteGatewayCloudTimeZoneLocalSnapshot] = [:],
+        confirmedOffsetMinutesByGatewayID: [String: Int] = [:],
+        requiredGatewayIDs: Set<String>? = nil
+    ) {
+        self.targetOffsetMinutes = targetOffsetMinutes
+        targets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: targetOffsetMinutes,
+            remote: remote,
+            localByGatewayID: localByGatewayID,
+            confirmedOffsetMinutesByGatewayID: confirmedOffsetMinutesByGatewayID
+        )
+        let requiredIDs = requiredGatewayIDs.map { Set($0.compactMap(SiteGatewayAccessScope.normalize)) }
+        if targets.isEmpty {
+            pendingGatewayIDs = []
+            summary = .noGateways
+        } else if targetOffsetMinutes == nil {
+            pendingGatewayIDs = []
+            summary = .unavailable
+        } else {
+            pendingGatewayIDs = Set(targets.filter {
+                $0.requiresSync && (requiredIDs?.contains($0.id) ?? true)
+            }.map(\.id))
+            summary = pendingGatewayIDs.isEmpty ? .inSync : .pending(pendingGatewayIDs.count)
+        }
+    }
+}
+
+enum SiteGatewayReviewUnavailableReason: Equatable {
+    case missingSnapshot
+    case changedContext
+    case offsetUnavailable
+    case missingNetwork
+    case missingNavigation
+}
+
+enum SiteGatewayReviewRouteDecision: Equatable {
+    case ready
+    case noPending
+    case unavailable(SiteGatewayReviewUnavailableReason)
+
+    static func decide(
+        evaluation: SiteEntryGatewayEvaluation,
+        hasMeshNetwork: Bool,
+        hasNavigationController: Bool
+    ) -> Self {
+        guard evaluation.summary != .unavailable else { return .unavailable(.offsetUnavailable) }
+        guard !evaluation.pendingGatewayIDs.isEmpty else { return .noPending }
+        guard hasMeshNetwork else { return .unavailable(.missingNetwork) }
+        guard hasNavigationController else { return .unavailable(.missingNavigation) }
+        return .ready
+    }
 }
 
 enum SiteTimeZoneReviewState: Equatable {
@@ -62,6 +127,14 @@ struct SiteEntryTimeZoneResult: Equatable {
     let timezone: SiteTimeZoneValue
     let site: SiteEntryTimeZoneSiteResult
     let gateway: SiteEntryGatewaySummary
+
+    var shouldPresent: Bool {
+        guard site == .alreadyInSync else { return true }
+        switch gateway {
+        case .pending, .unavailable: return true
+        case .noGateways, .inSync: return false
+        }
+    }
 }
 
 enum SiteEntryTimeZoneSyncPolicy {
@@ -127,8 +200,12 @@ enum SiteEntryTimeZoneSyncPolicy {
         if localTimezone == remoteTimezone {
             guard let target = localTimezone else { return .noAction }
             let gateway = summary(targetOffsetMinutes: target.offsetMinutes)
-            guard case .pending = gateway else { return .noAction }
-            return .showGatewayStatus(timezone: target, gateway: gateway)
+            switch gateway {
+            case .pending, .unavailable:
+                return .showGatewayStatus(timezone: target, gateway: gateway)
+            case .noGateways, .inSync:
+                return .noAction
+            }
         }
 
         switch (localTimezone, remoteTimezone) {
@@ -208,14 +285,11 @@ enum SiteEntryTimeZoneSyncPolicy {
                 dirtyOffsetMinutes: pair.value
             )
         }
-        let targets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+        return SiteEntryGatewayEvaluation(
             targetOffsetMinutes: targetOffsetMinutes,
             remote: remote,
             localByGatewayID: localTargets
-        )
-        guard !targets.isEmpty else { return .noGateways }
-        let pendingCount = targets.filter(\.requiresSync).count
-        return pendingCount > 0 ? .pending(pendingCount) : .inSync
+        ).summary
     }
 
     private static func localDecision(

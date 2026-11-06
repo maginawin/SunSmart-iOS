@@ -220,7 +220,6 @@ enum SiteGatewayTimeZoneReviewProjectionPolicy {
         explicitContext: SiteGatewayTimeZoneReviewContext?
     ) -> SiteGatewayTimeZoneReviewProjection {
         guard let localTimeZone,
-              let remoteTimeZone = remote.timezone,
               SiteGatewayAccessScope.resolve(remote: remote) != .visitor else {
             return .hidden
         }
@@ -230,7 +229,8 @@ enum SiteGatewayTimeZoneReviewProjectionPolicy {
             }
             return .explicit(explicitContext)
         }
-        guard localTimeZone == remoteTimeZone else { return .hidden }
+        guard let remoteTimeZone = remote.timezone,
+              localTimeZone == remoteTimeZone else { return .hidden }
         return .remote(remoteTimeZone)
     }
 }

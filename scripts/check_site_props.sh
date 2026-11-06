@@ -45,3 +45,33 @@ swiftc -parse-as-library "${entry[@]}" "$repo_root/Tests/Site/SiteEntryTimeZoneS
 swiftc -parse-as-library "${entry[@]}" "$repo_root/SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncCoordinator.swift" \
   "$repo_root/Tests/Site/SiteEntryTimeZoneSyncCoordinatorTests.swift" -o "$test_dir/entry-coordinator"
 "$test_dir/entry-coordinator"
+
+swiftc -parse-as-library "${entry[@]}" "$repo_root/SunSmart/Main/Site/Model/SiteTimeZoneStore.swift" \
+  "$repo_root/SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncCoordinator.swift" \
+  "$repo_root/SunSmart/Main/Site/Model/SyncGatewaysContext.swift" \
+  "$repo_root/Tests/Site/SiteEntryGatewayEvaluationTests.swift" -o "$test_dir/entry-evaluation"
+"$test_dir/entry-evaluation"
+
+# Execute production host methods with lightweight UI boundaries; rendering/Mesh
+# remain device acceptance checks, while state refresh and navigation ownership run.
+python3 - "$repo_root" "$test_dir" <<'PYHOST'
+from pathlib import Path
+import sys
+root, output = map(Path, sys.argv[1:])
+def method(source, signature):
+    start = source.index('    ' + signature)
+    end = source.index('\n    }', start) + len('\n    }')
+    return source[start:end].replace('private func ', 'func ', 1)
+controller = (root / 'SunSmart/Main/Site/Controller/SiteViewController.swift').read_text()
+overlay = (root / 'SunSmart/Main/Site/View/SiteEntryTimeZoneSyncOverlay.swift').read_text()
+body = '\n'.join(method(controller, name) for name in [
+    'private func refreshCurrentGatewayTimeZoneReviewProjection()',
+    'private func applyUploadedEntryGatewayReviewContext(',
+    'private func finishEntrySyncOverlay(', 'private func handleEntrySyncReview()',
+    'private func finishGatewayReviewRoute('])
+(output / 'EntryHostMethods.swift').write_text('import Foundation\nextension EntryHostBoundary {\n' + body + '\n}\n'
+    + 'extension EntryOverlayBoundary {\n' + method(overlay, 'func showResult(') + '\n}\n')
+PYHOST
+swiftc -parse-as-library "${entry[@]}" "$repo_root/SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneSyncState.swift" \
+  "$repo_root/Tests/Site/SiteEntryGatewayHostTests.swift" "$test_dir/EntryHostMethods.swift" -o "$test_dir/entry-host"
+"$test_dir/entry-host"

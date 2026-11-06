@@ -2140,6 +2140,9 @@
 "gateway_not_connected" = "网关未连接";
 "site_entry_sync_gateway_time_zone" = "网关时区";
 "site_entry_sync_no_gateways" = "没有需要同步的网关";
+"site_entry_sync_offset_unavailable" = "暂时无法检查网关时区，请刷新场所后重试。";
+"site_entry_sync_context_changed" = "场所设置或你的权限已变化，请刷新场所后重试。";
+"site_entry_sync_review_unavailable" = "暂时无法打开网关同步，请刷新场所后重试。";
 "site_entry_sync_gateways_need_sync" = "%d 个网关需要同步时区";
 "site_entry_sync_gateways_in_sync" = "所有网关均已同步";
 "site_entry_sync_later" = "稍后";

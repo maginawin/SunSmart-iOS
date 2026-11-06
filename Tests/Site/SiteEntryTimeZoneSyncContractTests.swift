@@ -39,7 +39,7 @@ struct SiteEntryTimeZoneSyncContractTests {
             overlay.contains("if result.site == .failedToUpdateServer") &&
                 overlay.contains("case .pending:") &&
                 overlay.contains("update(state: .gatewaysNeedSync(result))") &&
-                overlay.contains("case .noGateways, .inSync:") &&
+                overlay.contains("case .noGateways, .inSync, .unavailable:") &&
                 overlay.contains("update(state: .result(result))"),
             "Pending Gateways must show Review actions while Site failure stays dismissible"
         )
@@ -79,7 +79,10 @@ struct SiteEntryTimeZoneSyncContractTests {
             "site_entry_sync_gateways_need_sync",
             "site_entry_sync_later",
             "site_entry_sync_review_sync",
-            "site_entry_sync_got_it"
+            "site_entry_sync_got_it",
+            "site_entry_sync_offset_unavailable",
+            "site_entry_sync_context_changed",
+            "site_entry_sync_review_unavailable"
         ]
         for key in requiredKeys {
             let declaration = "\"\(key)\" ="
@@ -109,7 +112,9 @@ struct SiteEntryTimeZoneSyncContractTests {
         )
         require(
             presentationFlow.contains("entrySyncOverlay.showChecking(in: container)") &&
-                presentationFlow.contains("await entrySyncCoordinator.run(presentation.decision)") &&
+                presentationFlow.contains("await entrySyncCoordinator.run(") &&
+                presentationFlow.contains("prepareTimeZone:") &&
+                presentationFlow.contains("evaluateGateways:") &&
                 presentationFlow.contains("entrySyncOverlay.showResult(entryResult)") &&
                 !presentationFlow.contains("SiteGatewayCloudTimeZoneSessionCoordinator") &&
                 !presentationFlow.contains("gateway/datetime/update") &&
@@ -121,12 +126,11 @@ struct SiteEntryTimeZoneSyncContractTests {
                 appearsInOrder(
                     [
                         "private func handleEntrySyncReview()",
-                        "finishEntrySyncOverlay()",
                         "showSyncGatewaysPage()"
                     ],
                     in: siteController
                 ),
-            "REVIEW SYNC must dismiss the overlay before routing to Sync Gateways"
+            "REVIEW SYNC must delegate to the route that owns dismissal and feedback"
         )
         require(
             siteController.contains("applyUploadedEntryGatewayReviewContext(") &&

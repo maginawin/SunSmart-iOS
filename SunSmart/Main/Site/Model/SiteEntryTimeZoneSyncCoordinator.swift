@@ -96,7 +96,9 @@ final class SiteEntryTimeZoneSyncCoordinator {
     }
 
     func run(
-        _ decision: SiteEntryTimeZoneDecision
+        _ decision: SiteEntryTimeZoneDecision,
+        prepareTimeZone: (@MainActor (SiteTimeZoneValue) async -> Void)? = nil,
+        evaluateGateways: (@MainActor (SiteTimeZoneValue) -> SiteEntryGatewaySummary)? = nil
     ) async -> SiteEntryTimeZoneResult {
         guard let context = resultContext(for: decision) else {
             preconditionFailure("A no-action decision must not start entry sync")
@@ -110,7 +112,7 @@ final class SiteEntryTimeZoneSyncCoordinator {
             gateway: context.gateway
         )
 
-        return await withTaskCancellationHandler(operation: {
+        let result = await withTaskCancellationHandler(operation: {
             await withCheckedContinuation { continuation in
                 activeRun = ActiveRun(
                     token: token,
@@ -141,6 +143,10 @@ final class SiteEntryTimeZoneSyncCoordinator {
                 businessTask = Task { [weak self] in
                     guard let self else { return }
                     let result = await self.perform(decision)
+                    if self.activeRun?.token == token, !Task.isCancelled,
+                       result.site != .failedToUpdateServer {
+                        await prepareTimeZone?(result.timezone)
+                    }
                     self.markBusinessFinished(
                         token: token,
                         decision: decision,
@@ -153,6 +159,14 @@ final class SiteEntryTimeZoneSyncCoordinator {
                 self?.cancel()
             }
         })
+        // Preparation and the minimum display interval may both outlive the original
+        // comparison. Evaluate after both have completed, not when the work started.
+        guard !Task.isCancelled, let evaluateGateways else { return result }
+        return SiteEntryTimeZoneResult(
+            timezone: result.timezone,
+            site: result.site,
+            gateway: evaluateGateways(result.timezone)
+        )
     }
 
     func cancel() {
