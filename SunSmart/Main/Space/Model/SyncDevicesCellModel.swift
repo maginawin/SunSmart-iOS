@@ -36,6 +36,9 @@ class SyncCellModel: NSObject {
     var isFineshed: Bool = false
     /// 状态
     var state: SyncDevicesState = .none
+    /// Retry may probe stale presence. This belongs only to the current UI task,
+    /// and is independent of counters reset by step retries; never persisted.
+    var allowsOfflineSceneProbe = false
 }
 
 struct SunricherVendorSetUnacknowledged: StaticUnacknowledgedVendorMessage {

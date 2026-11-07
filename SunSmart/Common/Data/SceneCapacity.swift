@@ -75,7 +75,7 @@ enum SceneCapacity {
 
     static func validateTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
                                  scene: Scene? = nil, sceneGroups: [Group] = [],
-                                 sceneSnapshot: SceneTargetSnapshot? = nil) throws {
+                                 sceneSnapshot: SceneTargetSnapshot? = nil, requiresObservation: Bool = true) throws {
         try validateConfigurations(sceneSnapshot: sceneSnapshot)
         let nodes = MeshNetworkManager.instance.realNodes + members
         var visited = Set<UUID>()
@@ -86,7 +86,8 @@ enum SceneCapacity {
                                          scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
             do {
                 try SceneCapacityPolicy.validate(previous: previous, desired: desired,
-                    observed: node.sceneSetupModel?.parentElement?.observedSceneRegister)
+                    observed: node.sceneSetupModel?.parentElement?.observedSceneRegister,
+                    requiresObservation: requiresObservation)
             } catch SceneCapacityPolicy.Failure.unknown { unknown.append(label(node)) }
             catch { full.append(label(node)) }
         }
@@ -125,8 +126,9 @@ enum SceneCapacity {
     }
 
     /// Read only the ordinary target Register. It does not synthesize Scenes.
-    static func readUnknownState(nodes: [Node], completion: @escaping (Bool) -> Void) {
-        let unknown = unknownNodes(nodes)
+    static func readUnknownState(nodes: [Node], forceRefresh: Bool = false, completion: @escaping (Bool) -> Void) {
+        // A manual retry may probe an offline cached node even with a known Register.
+        let unknown = forceRefresh ? nodes : unknownNodes(nodes)
         guard !unknown.isEmpty else { completion(true); return }
         let manager = MeshNetworkManager.instance
         guard let network = manager.meshNetwork, !MeshProxyMessageCommand.shared.isBusy,

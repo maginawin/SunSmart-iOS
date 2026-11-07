@@ -50,13 +50,21 @@ struct SceneConfigurationStore {
     }
 }
 enum SceneCapacity {
-    static func nodesRequiringRead(sceneSnapshot: Snapshot) -> [Int] { [] }
-    static func readUnknownState(nodes: [Int], completion: (Bool) -> Void) { completion(true) }
+    static var unknown = false, reads = 0
+    static func label(_ node: Int) -> String { String(node) }
+    static func nodesRequiringRead(sceneSnapshot: Snapshot) -> [Int] { unknown ? [1, 2] : [] }
+    static func readUnknownState(nodes: [Int], completion: (Bool) -> Void) { reads += 1; completion(false) }
 }
 enum TimedSchedulerBindings {
+    enum Failure: Error { case deviceUnknown(String) }
     static var unknown = false
+    static var failures = 0
+    static var requiresRegisters: [Bool] = []
+    static func showFailure(_ error: Error) { failures += 1 }
     static func nodesRequiringTopologyRead(sceneSnapshot: Snapshot) throws -> [Int] { unknown ? [1] : [] }
-    static func prepareTopology(sceneSnapshot: Snapshot) throws -> Bool { true }
+    static func prepareTopology(sceneSnapshot: Snapshot, requiresSceneRegister: Bool = true) throws -> Bool {
+        requiresRegisters.append(requiresSceneRegister); return true
+    }
 }
 enum ScheduleServer {
     static var completion: ((Bool) -> Void)?
@@ -222,6 +230,22 @@ func check(_ condition: Bool, _ message: String) { if !condition { print("FAIL: 
         let revoked = Settings(); SceneConfigurationStore.allowed = false; revoked.doneAction()
         check(revoked.errors == 1 && revoked.navigationController!.pops == 0, "unchanged shortcut still validates access")
         SceneConfigurationStore.allowed = true; SceneConfigurationStore.unchanged = nil
+        SceneCapacity.unknown = true
+        let offlineSave = Settings(); offlineSave.doneAction()
+        check(offlineSave.coordinator.saves == 1 && offlineSave.navigationController!.pushed.count == 1 && SceneCapacity.reads == 0,
+              "DONE persists intent and opens Sync without an all-device Register prerequisite")
+        check(TimedSchedulerBindings.requiresRegisters.last == false, "DONE only defers Scene observation, not local validation")
+        let offlinePreview = Settings(); offlinePreview.startSend(saving: false)
+        check(SceneCapacity.reads == 1 && !offlinePreview.busy && offlinePreview.coordinator.saves == 0,
+              "Preview retains its existing read and failure behavior")
+        TimedSchedulerBindings.unknown = true
+        let timedSave = Settings(); timedSave.doneAction()
+        check(timedSave.busy && timedSave.coordinator.saves == 0 && timedSave.navigationController!.pushed.isEmpty,
+              "new Timed slots still require topology read despite unknown Scene Register")
+        ScheduleServer.completion?(false)
+        check(!timedSave.busy && timedSave.coordinator.saves == 0 && TimedSchedulerBindings.failures == 1,
+              "Timed read failure remains blocked with a specific capacity error")
+        TimedSchedulerBindings.unknown = false; SceneCapacity.unknown = false
         let page = Settings()
         page.doneAction()
         check(page.alerts == 0, "DONE has no send/confirm dialog")

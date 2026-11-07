@@ -364,13 +364,14 @@ enum TimedSchedulerBindings {
     /// Use prospective membership, including removals, before a topology edit.
     static func prepareTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
                                 scene: Scene? = nil, sceneGroups: [Group] = [],
-                                sceneSnapshot: SceneTargetSnapshot? = nil) throws -> Plan {
+                                sceneSnapshot: SceneTargetSnapshot? = nil, requiresSceneRegister: Bool = true) throws -> Plan {
         if let group, hasProtectedProfile(group: group)
             || addingMembers.contains(where: { hasProtectedProfile(group: group, node: $0) }) {
             throw Failure.unsupportedProfile
         }
         try SceneCapacity.validateTopology(group: group, members: members, addingMembers: addingMembers,
-                                           scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
+                                           scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot,
+                                           requiresObservation: requiresSceneRegister)
         let targets = try topologyTargets(group: group, members: members, addingMembers: addingMembers,
                                           scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
         return try prepare(schedules: MeshNetworkManager.instance.schedules, targetOverrides: targets)

@@ -27,6 +27,8 @@ final class SyncExecutionSession {
     private var cancelAuthorization: (() -> Void)?
     private var sceneDeletionActivationID: UUID?
     private var pendingPreparations: [() -> Void] = []
+    /// A successful read allows this task to proceed even before presence updates.
+    private var sceneRegisterReadTasks = Set<ObjectIdentifier>()
     private var restoreOperation: DeviceOperationType?
     // Keep failed saves as well as the active task until stop/close has settled.
     private var hdbZoneCachePersistenceFailed = false
@@ -99,6 +101,7 @@ final class SyncExecutionSession {
         let preparations = pendingPreparations
         pendingPreparations.removeAll()
         coordinator.start { [self] identifier in
+            sceneRegisterReadTasks.removeAll()
             cloudResultChanged = false
             cloudChangePublished = false
             guard validatePlan(identifier) else { return }
@@ -186,16 +189,31 @@ final class SyncExecutionSession {
             return
         }
         if case .configuration(let node, .scene(let number, _)) = operationType(for: model) {
-            if !SceneCapacity.unknownNodes([node]).isEmpty {
+            let taskID = ObjectIdentifier(model)
+            let readThisRun = sceneRegisterReadTasks.contains(taskID)
+            if !node.state, !model.allowsOfflineSceneProbe, !readThisRun {
+                #if DEBUG
+                traceSceneSync("taskDeferred", detail: "address=\(node.primaryUnicastAddress) reason=offline")
+                #endif
+                finishOperation(model, successful: false)
+                advance(identifier)
+                return
+            }
+            let probeOfflineRetry = !node.state && !readThisRun
+            if probeOfflineRetry || !SceneCapacity.unknownNodes([node]).isEmpty {
                 #if DEBUG
                 traceSceneSync("registerRead", detail: "address=\(node.primaryUnicastAddress)")
                 #endif
-                SceneCapacity.readUnknownState(nodes: [node]) { [self] resolved in
+                var completed = false
+                SceneCapacity.readUnknownState(nodes: [node], forceRefresh: probeOfflineRetry) { [self] resolved in
+                    guard !completed else { return }
+                    completed = true
                     guard isActiveSyncRun(identifier), validatePlan(identifier) else { return }
                     #if DEBUG
                     traceSceneSync("registerReadResult", detail: "address=\(node.primaryUnicastAddress) resolved=\(resolved)")
                     #endif
-                    if !resolved { finishOperation(model, successful: false) }
+                    if resolved { sceneRegisterReadTasks.insert(taskID) }
+                    else { finishOperation(model, successful: false) }
                     advance(identifier)
                 }
                 return

@@ -547,7 +547,9 @@ final class SceneConfigurationStore {
               !snapshot.targets.contains(where: { EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: $0.node) }) else {
             throw Failure.invalidTargets
         }
-        let plan = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot)
+        // Save desired Scene work even when a member cannot answer. The Sync
+        // session confirms its physical capacity before parameters and Store.
+        let plan = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot, requiresSceneRegister: false)
         let previousGroups = manager.groups.map { ($0, $0.info.sceneExecuteDatas) }
         // The inner Timed savepoint can succeed before the outer COMMIT fails.
         let previousSlots = plan.schedules.map { ($0, $0.nodeSlots) }

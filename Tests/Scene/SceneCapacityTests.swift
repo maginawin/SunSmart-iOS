@@ -13,6 +13,10 @@ struct SceneCapacityTests {
         try SceneCapacityPolicy.validate(previous: [], desired: [7], observed: [])
         expectFailure(.capacity, previous: sixteen, desired: sixteen.union([17]), observed: sixteen)
         expectFailure(.unknown, previous: [], desired: [7], observed: nil)
+        try SceneCapacityPolicy.validate(previous: [], desired: [7], observed: nil, requiresObservation: false)
+        try SceneCapacityPolicy.validate(previous: [], desired: sixteen, observed: nil, requiresObservation: false)
+        expectFailure(.capacity, previous: [], desired: sixteen.union([17]), observed: nil, requiresObservation: false)
+        expectFailure(.capacity, previous: [], desired: [17], observed: sixteen, requiresObservation: false)
         expectFailure(.capacity, previous: [], desired: [17], observed: sixteen)
         expectFailure(.capacity, previous: [], desired: [17], observed: fifteen.union([0xFF00]))
         // Pending physical removal cannot release a slot before confirmation.
@@ -42,9 +46,9 @@ struct SceneCapacityTests {
     }
 
     static func expectFailure(_ expected: SceneCapacityPolicy.Failure, previous: Set<UInt16>,
-                              desired: Set<UInt16>, observed: Set<UInt16>?) {
+                              desired: Set<UInt16>, observed: Set<UInt16>?, requiresObservation: Bool = true) {
         do {
-            try SceneCapacityPolicy.validate(previous: previous, desired: desired, observed: observed)
+            try SceneCapacityPolicy.validate(previous: previous, desired: desired, observed: observed, requiresObservation: requiresObservation)
             fatalError("Expected \(expected)")
         } catch { precondition(error as? SceneCapacityPolicy.Failure == expected) }
     }

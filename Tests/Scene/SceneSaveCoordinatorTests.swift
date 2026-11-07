@@ -112,10 +112,183 @@ import SQLite3
         try authorityContinuation()
         try metadataTaskContinuity()
         try groupDeletionLifecycle()
+        try offlineMemberPartialStoreReload()
+        try offlineSaveAdmission()
+        sceneRegisterReadBoundary()
         print("PASS coordinator: preview, DONE, stale confirmation, membership, stop, cancel and projection retry")
     }
 }
 func tryValue<T>(_ value: () throws -> T) -> T { try! value() }
+
+// Actual Store result application, Scene SQLite storage and sync-read selection.
+// Radio/Session ordering is covered separately; the Node cache remains a fixture.
+func offlineMemberPartialStoreReload() throws {
+    let path = CommandLine.arguments[1] + ".offline-members"
+    SunSmartDataManager.shared.db = try Connection(path)
+    let manager = MeshNetworkManager.instance
+    manager.scenes = []; manager.schedules = []; manager.currentNetworkKey.networkId = 1
+    SpaceData.value = SpaceData(); SpaceViewController.active = nil
+    SpaceConfigurationSafety.recovery = FixtureRecoveryState()
+    EmergencyFireControllerSceneEventManager.blocked = []
+    Scene.sdkSaveFails = false; GroupInfo.savingSucceeds = true
+    let l1 = Node(16), l2 = Node(19), group = Group(0xC000)
+    manager.groups = [group]; manager.realNodes = [l1, l2]
+    for node in manager.realNodes {
+        node.group = group; node.sceneSetupModel!.parentElement!.observedSceneRegister = nil
+    }
+    l1.state = false
+    let scope = SceneScope(meshUUID: manager.meshNetwork!.uuid.uuidString, networkID: "0001")
+    let draft = try SceneDraft(scope: scope, name: "Two lamps", imageId: 0, kind: .groups,
+        groupParameters: [group.address.address: .init(isOn: true, lightness: 65535, cct: 6500)])
+    guard case .ready(let scene) = try SceneSaveCoordinator().saveForSync(draft: draft) else { fatalError("must persist both targets") }
+    let original = scene.info.configuration!
+    precondition(original.pendingOperations.count == 2)
+    precondition(manager.realNodes.allSatisfy { $0.sceneSetupModel!.parentElement!.observedSceneRegister == nil },
+                 "saving offline intent must not synthesize empty Register observations")
+    func storeHandle(_ scene: Scene, _ node: Node) throws -> MeshMessageHandle {
+        let handle = MeshMessageHandle(message: SceneStore(scene.number), model: node.sceneSetupModel!)
+        handle.sceneContext = try SceneMessageContext(scene: scene, node: node, action: .write)
+        return handle
+    }
+    let failed = l1.applyMessageHandle(try storeHandle(scene, l1), isSuccess: false)
+    precondition(!failed)
+    precondition(scene.info.configuration == original, "failure must retain durable intent")
+    let onlineSaved = l2.applyMessageHandle(try storeHandle(scene, l2))
+    precondition(onlineSaved)
+    precondition(scene.info.configuration!.pendingOperations.map(\.identity) == [l1.sceneConfigurationIdentity!])
+
+    SunSmartDataManager.shared.db = try Connection(path)
+    let reopened = Scene(scene.number)
+    reopened.info = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number)!
+    manager.scenes = [reopened]
+    let nodes = [l1, l2].map { old -> Node in
+        let node = Node(old.primaryUnicastAddress); node.uuid = old.uuid; node.fingerprint = old.fingerprint
+        node.group = group; node.state = true
+        // SDK cache persistence is an explicit fixture boundary, not SQLite evidence.
+        node.sceneExecuteDatas = old.persistedSceneExecuteDatas
+        return node
+    }
+    manager.realNodes = nodes
+    precondition(reopened.info.configuration!.revision == original.revision)
+    precondition(reopened.info.configuration!.pendingOperations == original.pendingOperations.filter { $0.identity == nodes[0].sceneConfigurationIdentity })
+    precondition(nodes[0].getNodeSyncSceneDatas(scene: reopened).count == 1)
+    precondition(nodes[1].getNodeSyncSceneDatas(scene: reopened).isEmpty, "persisted L2 success must not become a new task")
+
+    let retry = try storeHandle(reopened, nodes[0])
+    try SunSmartDataManager.shared.db!.run("CREATE TRIGGER reject_retry BEFORE INSERT ON sceneInfos BEGIN SELECT RAISE(ABORT, 'injected retry save'); END")
+    precondition(!nodes[0].applyMessageHandle(retry), "Store ACK does not replace a successful App save")
+    precondition(nodes[0].getNodeSyncSceneDatas(scene: reopened).count == 1)
+    SunSmartDataManager.shared.db = try Connection(path)
+    reopened.info = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number)!
+    precondition(reopened.info.configuration!.pendingOperations.count == 1, "failed persistence must survive reload as retryable")
+    try SunSmartDataManager.shared.db!.run("DROP TRIGGER reject_retry")
+    let retrySaved = nodes[0].applyMessageHandle(try storeHandle(reopened, nodes[0]))
+    precondition(retrySaved)
+    SunSmartDataManager.shared.db = try Connection(path)
+    reopened.info = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number)!
+    precondition(reopened.info.configuration!.pendingOperations.isEmpty)
+    precondition(nodes.allSatisfy { $0.getNodeSyncSceneDatas(scene: reopened).isEmpty })
+    print("PASS two-lamp Scene SQLite: partial Store success, reopened pending generation, only failed L1 retries, persistence failure remains retryable, final reload settled")
+}
+
+func sceneRegisterReadBoundary() {
+    let manager = MeshNetworkManager.instance, node = Node(19)
+    manager.realNodes = [node]; manager.currentNetworkKey.networkId = 1
+    SceneRegisterReadBoundary.batches = []
+    node.state = false; node.sceneSetupModel!.parentElement!.observedSceneRegister = [1]
+    var results: [Bool] = []
+    SceneCapacity.readUnknownState(nodes: [node]) { results.append($0) }
+    precondition(results == [true] && SceneRegisterReadBoundary.batches.isEmpty)
+    func finish(_ index: Int, success: Bool) {
+        let batch = SceneRegisterReadBoundary.batches[index]
+        batch.handles.forEach { $0.isSuccessful = success }
+        batch.completion(batch.handles)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+    }
+    SceneCapacity.readUnknownState(nodes: [node], forceRefresh: true) { results.append($0) }
+    precondition(SceneRegisterReadBoundary.batches.count == 1 && results.count == 1,
+                 "forced retry really submits a read even when cached Register is known")
+    finish(0, success: false)
+    precondition(results == [true, false], "old observed capacity cannot turn a timed-out probe into success")
+    SceneCapacity.readUnknownState(nodes: [node], forceRefresh: true) { results.append($0) }
+    finish(1, success: true)
+    precondition(results.last == true && !node.state, "accepted read does not fabricate online state")
+    node.sceneSetupModel!.parentElement!.observedSceneRegister = nil
+    SceneCapacity.readUnknownState(nodes: [node]) { results.append($0) }
+    finish(2, success: true)
+    precondition(results.last == false, "batch success without an observed Register must fail")
+    SceneCapacity.readUnknownState(nodes: [node]) { results.append($0) }
+    node.sceneSetupModel!.parentElement!.observedSceneRegister = []
+    finish(3, success: true)
+    precondition(results.last == true)
+    SceneCapacity.readUnknownState(nodes: [node], forceRefresh: true) { results.append($0) }
+    manager.realNodes = [Node(19)]
+    finish(4, success: true)
+    precondition(results.last == false, "same address with changed identity invalidates read")
+    manager.realNodes = [node]
+    SceneCapacity.readUnknownState(nodes: [node], forceRefresh: true) { results.append($0) }
+    manager.currentNetworkKey.networkId = 2
+    finish(5, success: true)
+    precondition(results.last == false, "Space switch invalidates the old read")
+    manager.currentNetworkKey.networkId = 1
+    MeshLibManager.manager.isMeshNetworkConnected = false
+    SceneCapacity.readUnknownState(nodes: [node], forceRefresh: true) { results.append($0) }
+    precondition(results.last == false && SceneRegisterReadBoundary.batches.count == 6)
+    MeshLibManager.manager.isMeshNetworkConnected = true
+    print("PASS actual Register read boundary: forced cached/offline query, timeout, missing observation, accepted empty Register, identity/Space change, disconnected")
+}
+
+func offlineSaveAdmission() throws {
+    let path = CommandLine.arguments[1] + ".offline-admission"
+    SunSmartDataManager.shared.db = try Connection(path)
+    let manager = MeshNetworkManager.instance, store = SceneConfigurationStore()
+    manager.scenes = []; manager.schedules = []; manager.currentNetworkKey.networkId = 1
+    SpaceData.value = SpaceData(); SpaceViewController.active = nil
+    SpaceConfigurationSafety.recovery = FixtureRecoveryState()
+    Scene.sdkSaveFails = false; GroupInfo.savingSucceeds = true
+    let a = Node(16), b = Node(19), group = Group(0xC000)
+    manager.realNodes = [a, b]; manager.groups = [group]
+    for node in manager.realNodes { node.group = group; node.state = false }
+    let scope = SceneScope(meshUUID: manager.meshNetwork!.uuid.uuidString, networkID: "0001")
+    let draft = try SceneDraft(scope: scope, name: "All offline", imageId: 0, kind: .groups,
+        groupParameters: [group.address.address: .init(isOn: true, lightness: 12000, cct: 4000)])
+    let snapshot = try SceneTargetResolver.resolve(draft: draft)
+    do { _ = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot); fatalError("default topology lost strict read requirement") }
+    catch let error as SceneCapacity.Failure { precondition(error.unknown) }
+    // Deferring Scene observation must not allocate an unknown physical Scheduler slot.
+    let timed = Schedule(90); timed.selectTargetType = .groups; timed.groups = [group]
+    manager.schedules = [timed]; a.observedTimedSlots = nil
+    do { _ = try store.commit(draft: draft, expectedRevision: draft.revision); fatalError("unknown Scheduler slot accepted") }
+    catch TimedSchedulerBindings.Failure.deviceUnknown {}
+    precondition(tryValue { try SceneInfo.loadAll(meshUUID: scope.meshUUID).isEmpty })
+    precondition(timed.nodeSlots?.isEmpty == true)
+    manager.schedules = []
+    // A known full Register still rejects the same draft before any durable write.
+    a.sceneSetupModel!.parentElement!.observedSceneRegister = Set(1...16)
+    do { _ = try store.commit(draft: draft, expectedRevision: draft.revision); fatalError("known full Register accepted") }
+    catch let error as SceneCapacity.Failure { precondition(!error.unknown) }
+    a.sceneSetupModel!.parentElement!.observedSceneRegister = nil
+    // Local failure must not leave a ghost Scene or pending work.
+    // SceneInfo was initialized by the earlier load; inject the actual Scene write failure.
+    try SunSmartDataManager.shared.db!.run("CREATE TRIGGER reject_offline BEFORE INSERT ON sceneInfos BEGIN SELECT RAISE(ABORT, 'offline save'); END")
+    do { _ = try store.commit(draft: draft, expectedRevision: draft.revision); fatalError("failed persistence accepted") } catch {}
+    precondition(manager.scenes.isEmpty && group.info.sceneExecuteDatas.isEmpty)
+    try SunSmartDataManager.shared.db!.run("DROP TRIGGER reject_offline")
+    guard case .ready(let scene) = try store.commit(draft: draft, expectedRevision: draft.revision) else { fatalError("all offline Scene must save") }
+    let saved = scene.info.configuration!
+    precondition(saved.pendingOperations.count == 2 && saved.pendingOperations.allSatisfy { $0.action == .write })
+    SunSmartDataManager.shared.db = try Connection(path)
+    let loaded = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number)!
+    precondition(loaded.configuration == saved, "all-offline intent and generations survive SQLite reconnect")
+    scene.info = loaded
+    for node in manager.realNodes {
+        precondition(node.getNodeSyncSceneDatas(scene: scene).count == 1)
+        precondition(node.sceneSetupModel!.parentElement!.observedSceneRegister == nil)
+        do { try SceneCapacity.validateStore(node: node, number: scene.number); fatalError("unknown physical write accepted") }
+        catch let error as SceneCapacity.Failure { precondition(error.unknown) }
+    }
+    print("PASS offline save: strict default/Timed protection, known capacity rejection, failed-save rollback, all-offline persistence/reload, strict Store check")
+}
 
 // Real SQLite commitMetadata interleaved with production task snapshots and receipts.
 func metadataTaskContinuity() throws {

@@ -1,4 +1,30 @@
 import Foundation
+// Only the radio batch is controlled here. The read admission, current-network
+// checks, Register observation requirement and async completion use production code.
+struct SceneRegisterGet {}
+final class MeshLibManager {
+    static let manager = MeshLibManager()
+    var isMeshNetworkConnected = true
+}
+enum SceneRegisterReadBoundary {
+    static var batches: [(handles: [MeshMessageHandle], completion: ([MeshMessageHandle]) -> Void)] = []
+}
+extension MeshProxyMessageCommand {
+    func addMessage(messageHandles: [MeshMessageHandle], progressBack: ((Int, Int) -> Void)?,
+                    successfulBack: ((MeshMessageHandle, Int) -> Void)?, failedBack: ((MeshMessageHandle) -> Void)?,
+                    finishedBack: @escaping ([MeshMessageHandle]) -> Void) {
+        precondition(messageHandles.allSatisfy { $0.message is SceneRegisterGet && !$0.continuous })
+        SceneRegisterReadBoundary.batches.append((messageHandles, finishedBack))
+    }
+}
+
+// Scene persistence cases do not send Scheduler tasks; retain the same explicit
+// pending-Schedule boundary as the Scene command/task-builder harness.
+extension Schedule {
+    func needsSync(on node: Node, contextGroup: Group?) -> Bool {
+        testSyncNeededAddresses?.contains(node.primaryUnicastAddress) ?? true
+    }
+}
 final class SyncExecutionEnvironment { var configurationIsCurrent: () -> Bool = { true } }
 class SyncDevicesModel {
     enum State { case successful, failed }

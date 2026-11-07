@@ -12,6 +12,7 @@ struct SyncRetryPolicy {
             if device.state != .successful {
                 device.state = .none
                 if let operationType = device.operationType {
+                    if case .configuration(_, .scene) = operationType { device.allowsOfflineSceneProbe = true }
                     resetMessageHandlesForResync(operationType.messageHandles)
                 }
             }
@@ -97,6 +98,7 @@ struct SyncRetryPolicy {
         task.failedCount = 0
         task.resetSkippedState()
         task.state = .none
+        if case .configuration(_, .scene) = task.operationType { task.allowsOfflineSceneProbe = true }
         // Defer rebuilding cleanup writes until their fresh Scheduler read has completed.
         if case .configuration(_, .sceneReferenceCleanup) = task.operationType {} else {
             resetMessageHandlesForResync(task.operationType.messageHandles)

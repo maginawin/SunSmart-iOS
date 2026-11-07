@@ -62,7 +62,7 @@ def scene_authority_support(harness):
 def run(suite):
     with tempfile.TemporaryDirectory(prefix=f'scene-{suite}-') as tmp:
         tmp = Path(tmp)
-        flags = []
+        flags = ['-module-cache-path', str(tmp / 'module-cache')]
         sources = []
         model = ROOT / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'
         if model.exists():
@@ -71,7 +71,7 @@ def run(suite):
             sources += [ROOT / 'SunSmart/Main/Scene/Model/SceneDraftSelection.swift', ROOT / 'SunSmart/Main/Device/Filter/Model/DeviceNameFilterSession.swift']
         if suite in ['storage', 'save', 'roundtrip-storage']:
             sdk = (ROOT / '.local-sdk/nordic-sig-mesh-sdk').resolve()
-            subprocess.run(['swiftc', '-emit-module', '-emit-library', '-module-name', 'SQLite',
+            subprocess.run(['swiftc', *flags, '-emit-module', '-emit-library', '-module-name', 'SQLite',
                             *map(str, sorted((sdk / 'Sources/SQLite').rglob('*.swift'))),
                             '-o', str(tmp / 'libSQLite.dylib'), '-emit-module-path', str(tmp / 'SQLite.swiftmodule')], check=True)
             flags += ['-I', str(tmp), '-L', str(tmp), '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(tmp)]
@@ -192,6 +192,7 @@ def run(suite):
             lifecycle_source += '\n' + function(mesh[mesh.index('    func delete(sceneId: SceneNumber)', mesh.index('    func delete(sceneId: SceneNumber)') + 1):], '    func delete(sceneId: SceneNumber)')
             lifecycle_source += '\n' + function((ROOT / 'SunSmart/Common/Data/SceneCapacity.swift').read_text(), '    func needsSceneRemoval(')
             lifecycle_source += '\n' + function((ROOT / 'SunSmart/Common/Data/Node+SyncData.swift').read_text(), '    func getNodeNeedDeleteSceneDatas(')
+            lifecycle_source += '\n' + function((ROOT / 'SunSmart/Common/Data/Node+SyncData.swift').read_text(), '    func getNodeSyncSceneDatas(')
             lifecycle_source += '\nvar syncReadGroup: Group? { group }\nvar scenes: [Scene] { MeshNetworkManager.instance.scenes.filter { scene in sceneExecuteDatas.contains { $0.sceneNumber == scene.number } } }\n'
             lifecycle_source += '\nfunc updateData(message: Any, isSuccess: Bool, model: Model?, finalizeSchedulerBinding: Bool = true) { guard isSuccess else { return }; switch message {\n' + deletion + '\ndefault: break\n} }\n'
             if '    func completeGroupSceneRemoval(' in mesh:
@@ -199,6 +200,7 @@ def run(suite):
             lifecycle_source += '\n}\nextension Scene {\n'
             lifecycle_source += function((ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text(), '    func getDeleteMessageHandles(node:') + '\n}\n'
             lifecycle_source += 'struct SchedulerContextBoundary { func matches(node: Node) -> Bool { true } }\nextension MeshMessageHandle { var timedSchedulerContext: SchedulerContextBoundary? { nil }; var schedulerTask: MeshSchedulerTask? { nil } }\n'
+            lifecycle_source += '\nextension SceneCapacity {\n' + function((ROOT / 'SunSmart/Common/Data/SceneCapacity.swift').read_text(), '    static func readUnknownState(') + '\n}\n'
             lifecycle.write_text(lifecycle_source)
             sources += [ROOT / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSchedulerTask.swift']
             sources += [lifecycle, ROOT / 'SunSmart/Common/Data/SceneDeleteCapability.swift', command, command_support, coordinator, ROOT / 'Tests/Scene/SceneSaveCoordinatorTestSupport.swift', ROOT / 'Tests/Scene/SceneSaveCoordinatorTests.swift']

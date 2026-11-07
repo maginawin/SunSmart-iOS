@@ -687,7 +687,7 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
                 previewComparison = snapshot.comparison
                 previewOnline = Set(snapshot.targets.filter { $0.node.state }.map(\.identity))
             }
-            let unknown = SceneCapacity.nodesRequiringRead(sceneSnapshot: snapshot)
+            let unknown = saving ? [] : SceneCapacity.nodesRequiringRead(sceneSnapshot: snapshot)
             let schedulers = try TimedSchedulerBindings.nodesRequiringTopologyRead(sceneSnapshot: snapshot)
             if !unknown.isEmpty || !schedulers.isEmpty {
                 setBusy(true); let token = lifecycle, revision = selection.draft.revision
@@ -697,14 +697,19 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
                         guard let self, self.accepts(token, revision: revision) else { return }
                         self.setBusy(false); XWHUDManager.hide()
                         if success { self.startSend(saving: saving) }
-                        else { self.interruptDevicePreview(); self.tip("sync_failed") }
+                        else {
+                            self.interruptDevicePreview()
+                            if saving, !schedulers.isEmpty {
+                                TimedSchedulerBindings.showFailure(TimedSchedulerBindings.Failure.deviceUnknown(schedulers.map(SceneCapacity.label).joined(separator: "\n")))
+                            } else { self.tip("sync_failed") }
+                        }
                     }
                 }
                 if !unknown.isEmpty { SceneCapacity.readUnknownState(nodes: unknown, completion: completion) }
                 else { ScheduleServer.readUnknownSchedulerState(nodes: schedulers, completion: completion) }
                 return
             }
-            _ = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot)
+            _ = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot, requiresSceneRegister: !saving)
             setBusy(true)
             if saving {
                 commit(revision: selection.draft.revision)

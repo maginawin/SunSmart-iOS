@@ -12,13 +12,13 @@ private final class Harness {
     var authorization: ((String?) -> Void)?
     var cancelledAuthorizations = 0
     var sceneUnknown = true
-    var sceneReads: [(nodes: [Node], completion: (Bool) -> Void)] = []
+    var sceneReads: [(nodes: [Node], forceRefresh: Bool, completion: (Bool) -> Void)] = []
     var sceneValidations: [(node: Node, number: UInt16)] = []
     var sceneValidationError: Error?
     var sceneFailures = 0
     init() {
         SceneCapacity.unknownNodesHandler = { [unowned self] in sceneUnknown ? $0 : [] }
-        SceneCapacity.readHandler = { [unowned self] in sceneReads.append(($0, $1)) }
+        SceneCapacity.readHandler = { [unowned self] in sceneReads.append(($0, $1, $2)) }
         SceneCapacity.validateHandler = { [unowned self] node, number in
             sceneValidations.append((node, number))
             if let error = sceneValidationError { throw error }
@@ -124,6 +124,9 @@ enum SyncExecutionSessionTests {
         formalInvalidationSettlesOnce()
         sceneExecutionGuards()
         parametersMustFinishBeforeStore()
+        offlineSceneMemberContinuesAndRetries()
+        offlineSceneAdmissionAndRetry()
+        sceneQueryTimeoutContinuesNextDevice()
         sceneReadSuccess()
         sceneReadFailureAndRetry()
         sceneStoreValidationFailure()
@@ -588,6 +591,154 @@ enum SyncExecutionSessionTests {
         }
         print("PASS parameter failure/Store failure ordering")
     }
+
+    static func offlineSceneMemberContinuesAndRetries() {
+        let h = Harness(); h.sceneUnknown = false
+        let (session, _, _, offline) = h.make(.scene(sceneId: 42, executeData: nil))
+        offline.primaryUnicastAddress = 16
+        let online = Node(); online.primaryUnicastAddress = 19
+        MeshNetworkManager.instance.meshNetwork!.nodes = [offline, online]
+        func device(_ node: Node) -> SyncDevicesModel {
+            let parameter = MeshMessageHandle(), store = MeshMessageHandle()
+            parameter.address = node.primaryUnicastAddress; store.address = node.primaryUnicastAddress
+            store.message = SceneStore(42); node.testHandles = [parameter, store]
+            let model = SyncDevicesModel(name: "Lamp", address: node.primaryUnicastAddress)
+            model.operationType = .configuration(node: node, type: .scene(sceneId: 42, executeData: nil))
+            return model
+        }
+        let l1 = device(offline), l2 = device(online)
+        let group = SyncDevicesGroupModel(groupName: "Group 1", groupAddress: 0xC000, deviceModels: [l1, l2])
+        l1.parentGroupModel = group; l2.parentGroupModel = group
+        session.sections[0].devices = []; session.sections[0].groups = [group]
+        // Durable intent/reload is tested with real SQLite in the save suite.
+        session.type = .scene(Scene(name: "Two lamps", number: 42, testNeedsSync: false))
+        var completions: [SyncDevicesViewController.SyncState] = []
+        session.onCompleted = { completions.append($0) }
+        session.start(); h.flush()
+        precondition(h.sends.count == 1 && h.sends[0].handles.first === offline.testHandles[0])
+        h.finish(0, success: false); h.flush()
+        precondition(l1.state == .failed && offline.updates == 0)
+        precondition(h.sends.count == 2 && h.sends[1].handles.first === online.testHandles[0],
+                     "offline parameter failure must skip its Store and advance to the online lamp")
+        h.finish(0, success: false); h.flush()
+        precondition(h.sends.count == 2, "duplicate failure cannot advance the next lamp")
+        h.finish(1); h.flush()
+        precondition(h.sends.count == 3 && h.sends[2].handles.first === online.testHandles[1])
+        h.finish(2); h.flush()
+        precondition(l2.state == .successful && online.updates == 1 && completions == [.syncFailure])
+        session.prepareDeviceForResync(l1); session.prepareDeviceForResync(l2)
+        session.start(); h.flush()
+        precondition(h.sends.count == 4 && h.sends[3].handles.first === offline.testHandles[0])
+        h.finish(0, success: false); h.flush()
+        precondition(l1.state == .inSettings && h.sends.count == 4, "old run cannot fail the retry")
+        h.finish(3); h.flush()
+        precondition(h.sends.count == 5 && h.sends[4].handles.first === offline.testHandles[1])
+        h.finish(4); h.flush()
+        precondition(l1.state == .successful && l2.state == .successful && completions == [.syncFailure, .syncSuccess])
+        precondition(h.sends.count == 5 && online.updates == 1, "successful unchanged L2 must not resend")
+        print("PASS two-lamp Scene Session: L1 parameter failure skips Store, L2 completes, duplicate/old failures ignored, retry sends only L1")
+    }
+    static func offlineSceneAdmissionAndRetry() {
+        for cachedRegister in [false, true] {
+            for allOffline in [false, true] {
+                for stepped in [false, true] {
+                    let h = Harness()
+                    let (session, _, _, l1) = h.make(.scene(sceneId: 42, executeData: nil))
+                    l1.primaryUnicastAddress = 16; l1.state = false
+                    let l2 = Node(); l2.primaryUnicastAddress = 19; l2.state = !allOffline
+                    MeshNetworkManager.instance.meshNetwork!.nodes = [l1, l2]
+                    var unknown = cachedRegister ? Set<UInt16>() : [16, 19]
+                    SceneCapacity.unknownNodesHandler = { $0.filter { unknown.contains($0.primaryUnicastAddress) } }
+                    func device(_ node: Node) -> (SyncDevicesModel, SyncCellModel) {
+                        let parameter = MeshMessageHandle(), store = MeshMessageHandle()
+                        parameter.address = node.primaryUnicastAddress; store.address = node.primaryUnicastAddress
+                        store.message = SceneStore(42); node.testHandles = [parameter, store]
+                        let model = SyncDevicesModel(name: "Lamp", address: node.primaryUnicastAddress)
+                        let operation = DeviceOperationType.configuration(node: node, type: .scene(sceneId: 42, executeData: nil))
+                        if stepped {
+                            let task = SyncDeviceStepTaskModel(name: "Scene", operationType: operation)
+                            let step = SyncDeviceStepModel(type: "Scene", state: .none, tasks: [task])
+                            task.parentStepModel = step; step.parentDeviceModel = model; model.steps = [step]
+                            return (model, task)
+                        }
+                        model.operationType = operation
+                        return (model, model)
+                    }
+                    let (d1, t1) = device(l1), (d2, t2) = device(l2)
+                    session.sections[0].devices = [d1, d2]
+                    session.type = .scene(Scene(name: "Offline members", number: 42, testNeedsSync: false))
+                    session.start(); h.flush()
+                    precondition(t1.state == .failed && l1.updates == 0,
+                                 "offline member remains unfinished without a write")
+                    precondition(h.sceneReads.allSatisfy { $0.nodes.allSatisfy { $0 === l2 } },
+                                 "initial offline member must not block on a Register query")
+                    if !allOffline {
+                        if !cachedRegister {
+                            precondition(h.sends.isEmpty && h.sceneReads.count == 1)
+                            unknown.remove(19); h.sceneReads[0].completion(true); h.flush()
+                        }
+                        precondition(h.sends.count == 1 && h.sends[0].handles.first === l2.testHandles[0])
+                        h.finish(0); h.flush(); h.finish(1); h.flush()
+                        precondition(t2.state == .successful && l2.updates == 1)
+                    } else {
+                        precondition(h.sends.isEmpty && h.sceneReads.isEmpty && t2.state == .failed)
+                    }
+                    precondition(session.syncState == .syncFailure)
+                    let sends = h.sends.count, reads = h.sceneReads.count
+                    session.prepareDeviceForResync(d1); session.start(); h.flush()
+                    precondition(h.sceneReads.count == reads + 1 && h.sceneReads.last!.forceRefresh && h.sends.count == sends,
+                                 "manual retry probes cached offline state even with a known Register")
+                    let failedRead = h.sceneReads.last!.completion
+                    failedRead(false); failedRead(false); h.flush()
+                    precondition(t1.state == .failed && h.sends.count == sends)
+                    session.prepareDeviceForResync(d1); session.start(); h.flush()
+                    failedRead(true); h.flush()
+                    precondition(h.sends.count == sends, "late old read cannot send in the new run")
+                    unknown.remove(16)
+                    let retryRead = h.sceneReads.last!.completion
+                    retryRead(true); retryRead(true); h.flush()
+                    precondition(!l1.state && h.sends.count == sends + 1 && h.sends.last!.handles.first === l1.testHandles[0],
+                                 "successful fresh query proceeds once without waiting for cached online state")
+                    h.finish(sends); h.flush(); h.finish(sends + 1); h.flush()
+                    precondition(t1.state == .successful && l1.updates == 1 && h.sends.count == sends + 2)
+                    precondition(l2.updates == (allOffline ? 0 : 1), "unchanged successful member never resends")
+                    precondition(session.syncState == (allOffline ? .syncFailure : .syncSuccess))
+                    session.close(); h.flush()
+                }
+            }
+        }
+        print("PASS offline Scene: initial skip, online continuation, all-offline failure, direct/step tasks, forced retry probe, duplicate/late reads, cached offline recovery")
+    }
+
+    static func sceneQueryTimeoutContinuesNextDevice() {
+        let h = Harness()
+        let (session, _, failedTask, staleOnline) = h.make(.scene(sceneId: 42, executeData: nil))
+        let online = Node(); online.primaryUnicastAddress = 19
+        let parameter = MeshMessageHandle(), store = MeshMessageHandle(); store.message = SceneStore(42)
+        parameter.address = 19; store.address = 19
+        online.testHandles = [parameter, store]
+        MeshNetworkManager.instance.meshNetwork!.nodes = [staleOnline, online]
+        let next = SyncDevicesModel(name: "Online", address: 19)
+        next.operationType = .configuration(node: online, type: .scene(sceneId: 42, executeData: nil))
+        session.sections[0].devices.append(next)
+        session.start(); h.flush()
+        precondition(h.sceneReads.count == 1 && h.sends.isEmpty)
+        let oldRead = h.sceneReads[0].completion
+        oldRead(false); h.flush()
+        precondition(failedTask.state == .failed && h.sceneReads.count == 2 && h.sceneReads[1].nodes[0] === online,
+                     "a stale online flag and query timeout only fail the current device")
+        precondition(h.sends.isEmpty && staleOnline.updates == 0)
+        h.sceneUnknown = false
+        h.sceneReads[1].completion(true); h.flush()
+        oldRead(true); h.flush()
+        precondition(h.sends.count == 1 && h.sends[0].handles.first === parameter)
+        h.finish(0); h.flush(); h.finish(1); h.flush()
+        precondition(next.state == .successful && failedTask.state == .failed && session.syncState == .syncFailure)
+        precondition(staleOnline.updates == 0 && online.updates == 1)
+        session.close(); h.flush()
+        print("PASS Scene query timeout: no writes to failed target, next device reads and Stores, old callback ignored")
+    }
+
     static func sceneReadSuccess() {
         let h = Harness()
         let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
