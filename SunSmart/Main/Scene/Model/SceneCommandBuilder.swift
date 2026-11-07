@@ -159,6 +159,7 @@ enum SceneCommandBuilder {
 /// Desired Scene data and per-message ownership retain their strict comparisons.
 final class SceneSyncProgress {
     enum Change {
+        case compositionData
         case subscription(Group, adding: Bool)
         case lightnessRange(ClosedRange<UInt16>)
     }
@@ -170,12 +171,13 @@ final class SceneSyncProgress {
         var group: ObjectIdentifier?
         var groupAddress: Address?
         var pendingGroupAddress: Address?
-        let hasScene: Bool
-        let hasOnOff: Bool
-        let hasLightness: Bool
-        let hasCct: Bool
+        var hasCompositionData: Bool
+        var hasScene: Bool
+        var hasOnOff: Bool
+        var hasLightness: Bool
+        var hasCct: Bool
         var lightnessRange: ClosedRange<UInt16>
-        let cctRange: ClosedRange<UInt16>
+        var cctRange: ClosedRange<UInt16>
         var exiting: Bool
 
         init(_ node: Node) {
@@ -185,6 +187,9 @@ final class SceneSyncProgress {
             group = node.group.map(ObjectIdentifier.init)
             groupAddress = node.group?.address.address
             pendingGroupAddress = node.restoreData?.addGroupAddress
+            // Match the SDK's initialization check, including restored nodes
+            // with a company identifier but no populated Models.
+            hasCompositionData = node.isCompositionDataReceived && node.elements.contains { !$0.models.isEmpty }
             hasScene = node.sceneSetupModel != nil
             hasOnOff = node.onoffModel != nil
             hasLightness = node.lightnessModel != nil
@@ -199,6 +204,7 @@ final class SceneSyncProgress {
         let node: Node
         var observed: Observation
         var expected: Observation
+        var awaitsCompositionData = false
         var completesExit = false
     }
     private var entries: [ObjectIdentifier: Entry] = [:]
@@ -217,6 +223,9 @@ final class SceneSyncProgress {
         let initial = entry.observed
         guard let identity = initial.identity else { return }
         switch change {
+        case .compositionData:
+            guard !initial.hasCompositionData else { return }
+            entry.awaitsCompositionData = true
         case .subscription(let group, let adding):
             if adding {
                 // Subscribing an auxiliary group must not authorize moving a member.
@@ -246,6 +255,19 @@ final class SceneSyncProgress {
             guard currentNodes.contains(key) else { return false }
             let current = Observation(entry.node)
             var allowed = entry.observed
+            if entry.awaitsCompositionData, !entry.observed.hasCompositionData, current.hasCompositionData {
+                // The SDK fills Models and product-derived CCT capabilities
+                // before the initialization callback validates this plan.
+                // Accept that first completion only; identity, membership,
+                // lightness trim and desired Scene data remain protected.
+                allowed.hasCompositionData = true
+                allowed.hasScene = current.hasScene
+                allowed.hasOnOff = current.hasOnOff
+                allowed.hasLightness = current.hasLightness
+                allowed.hasCct = current.hasCct
+                allowed.cctRange = current.cctRange
+                entry.awaitsCompositionData = false
+            }
             if current.group == entry.expected.group {
                 allowed.group = current.group
                 allowed.groupAddress = entry.expected.groupAddress

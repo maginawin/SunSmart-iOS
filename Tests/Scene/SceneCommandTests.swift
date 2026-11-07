@@ -4,6 +4,7 @@ import Foundation
     static func main() throws {
         try plannedGroupSceneSafetyCase()
         try groupSyncProgressCase()
+        try initializationProgressCase()
         try productionIdentityCase()
         let node = Node(1)
         node.lightnessModel = nil; node.effectiveSupportCct = false
@@ -260,6 +261,126 @@ import Foundation
             precondition(exiting(), "final unsubscribe completes exit intent")
         }
         print("PASS two-member Scene plan: expected progress, initial tasks, strict external edits and exit completion")
+    }
+
+    static func initializationProgressCase() throws {
+        let manager = MeshNetworkManager.instance
+        func missingComposition(_ node: Node) {
+            node.isCompositionDataReceived = false
+            node.sceneSetupModel = nil; node.onoffModel = nil; node.lightnessModel = nil
+            node.effectiveSupportCct = false
+        }
+        func receiveComposition(_ node: Node) {
+            // SDK applies Page 0 before delivering the transport callback.
+            node.isCompositionDataReceived = true
+            node.sceneSetupModel = Model(); node.onoffModel = Model(); node.lightnessModel = Model()
+            node.effectiveSupportCct = true
+            node.effectiveCctRange = 2200...7000
+        }
+        for mode in 0...3 {
+            let node = Node(1), other = Node(2), group = Group(0xC010), scene = Scene(12)
+            manager.realNodes = [node, other]; manager.groups = [group]; manager.scenes = []; manager.schedules = []
+            missingComposition(node)
+            if mode == 1 { manager.scenes = [scene] } // Existing but unrelated Scene.
+            if mode == 2 {
+                manager.scenes = [scene]; node.group = group
+                group.info.sceneExecuteDatas = [.init(sceneNumber: scene.number, lightness: 20000)]
+            }
+            if mode == 3 {
+                // A restored company identifier alone does not mean Models are available.
+                node.isCompositionDataReceived = true
+                manager.scenes = [scene]
+                scene.info.configuration = .init(kind: .devices, name: "Initializing",
+                    deviceMembers: [.init(identity: node.timedSchedulerIdentity!, parameters: .init(isOn: true, lightness: 20000, cct: 4000))])
+            }
+            let progress = SceneSyncProgress()
+            let current = SceneCommandBuilder.captureConfigurations(progress: progress)
+            let strict = SceneCommandBuilder.captureConfigurations()
+            let transport = SceneProgressTransport()
+            transport.configurationWillSend = { SpaceSyncTaskScope.expectSceneProgress($0, in: progress) }
+            let request = MeshMessageHandle(message: ConfigCompositionDataGet(), address: node.primaryUnicastAddress)
+            precondition(current())
+            // A timeout with no SDK update must leave the plan retryable.
+            transport.send = { handles, _, _, failure, finished in
+                failure?(handles[0]); finished?(handles)
+            }
+            transport.addMessage(messageHandles: [request], failedBack: { _ in precondition(current()) },
+                                 finishedBack: { _ in precondition(current()) })
+            var completed = false
+            var followUpSent = false
+            transport.send = { handles, _, success, _, finished in
+                DispatchQueue.main.async {
+                    receiveComposition(node)
+                    success?(handles[0], 0)
+                    finished?(handles)
+                }
+            }
+            transport.addMessage(messageHandles: [request], successfulBack: { _, _ in
+                guard current() else { print("FAIL Composition Data callback invalidates initialization, mode=\(mode)"); exit(1) }
+                // Initialization can enqueue its next configuration batch in this callback.
+                transport.send = { _, _, _, _, finished in followUpSent = true; finished?([]) }
+                transport.addMessage(messageHandles: [], finishedBack: nil)
+            }, finishedBack: { _ in precondition(current()); completed = true })
+            let deadline = Date().addingTimeInterval(2)
+            while !completed && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.001)) }
+            precondition(completed && followUpSent, "initialization must reach follow-up configuration")
+            if mode >= 2 { precondition(!strict(), "non-sync callers keep strict Scene capability snapshots") }
+            // Another Get must not authorize changing already known capabilities.
+            SpaceSyncTaskScope.expectSceneProgress([request], in: progress)
+            node.onoffModel = nil
+            precondition(!current(), "accepted capabilities cannot change again")
+            node.onoffModel = Model()
+            node.effectiveCctRange = 2700...6500
+            precondition(!current(), "accepted product CCT range cannot roll back")
+            node.effectiveCctRange = 2200...7000
+            node.isCompositionDataReceived = false
+            precondition(!current(), "composition completion cannot roll back")
+            node.isCompositionDataReceived = true
+            precondition(current())
+        }
+
+        let node = Node(1), other = Node(2), group = Group(0xC010), scene = Scene(12)
+        manager.realNodes = [node, other]; manager.groups = [group]; manager.scenes = [scene]
+        node.group = group; group.info.sceneExecuteDatas = [.init(sceneNumber: 12, lightness: 20000)]
+        missingComposition(node); missingComposition(other)
+        let progress = SceneSyncProgress()
+        let current = SceneCommandBuilder.captureConfigurations(progress: progress)
+        let request = MeshMessageHandle(message: ConfigCompositionDataGet(), address: node.primaryUnicastAddress)
+        SpaceSyncTaskScope.expectSceneProgress([.init(message: ConfigCompositionDataGet(page: 1), address: node.primaryUnicastAddress)], in: progress)
+        receiveComposition(node)
+        precondition(!current(), "non-Page-0 requests cannot authorize model changes")
+        missingComposition(node)
+        SpaceSyncTaskScope.expectSceneProgress([request], in: progress)
+        node.onoffModel = Model()
+        precondition(!current(), "capability changes before completed composition stay protected")
+        node.onoffModel = nil
+        receiveComposition(other)
+        precondition(!current(), "a request for one node cannot authorize another")
+        missingComposition(other); other.effectiveCctRange = 2700...6500
+        let restarted = SceneCommandBuilder.captureConfigurations(progress: SceneSyncProgress())
+        receiveComposition(node)
+        precondition(!restarted(), "a replacement plan cannot inherit an old request or late response")
+        node.fingerprint = String(repeating: "B", count: 64)
+        precondition(!current(), "initialization must not authorize identity replacement")
+        node.fingerprint = String(repeating: "A", count: 64)
+        let network = node.network
+        node.network = Network()
+        precondition(!current(), "initialization must not authorize network replacement")
+        node.network = network
+        node.subNetworkId = "0002"
+        precondition(!current(), "initialization must not authorize Space changes")
+        node.subNetworkId = "0001"
+        node.group = nil
+        precondition(!current(), "initialization must not authorize membership changes")
+        node.group = group
+        node.lightnessRange = 655...65535
+        precondition(!current(), "Composition Data does not authorize lightness trim changes")
+        node.lightnessRange = 0...65535
+        group.info.sceneExecuteDatas[0].lightness = 30000
+        precondition(!current(), "desired Scene edits stay strict during initialization")
+        group.info.sceneExecuteDatas[0].lightness = 20000
+        precondition(current())
+        print("PASS initialization progress: empty/unrelated/group/device Scenes, retry, asynchronous follow-up and strict mutation boundaries")
     }
 
     static func productionIdentityCase() throws {

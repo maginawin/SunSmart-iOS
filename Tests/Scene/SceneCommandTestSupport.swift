@@ -49,6 +49,7 @@ enum SceneConfigurationStore {
 // delayed submission, plan comparison and Scene generation run unchanged.
 struct ConfigModelSubscriptionAdd { let address: UInt16 }
 struct ConfigModelSubscriptionDelete { let address: UInt16 }
+struct ConfigCompositionDataGet { var page: UInt8 = 0 }
 struct LightLightnessRangeSet { let range: ClosedRange<UInt16> }
 enum NodeSyncTopologyCapture {
     static func isMembershipGroup(_ group: Group) -> Bool { !group.isVirtual && group.address.address < 0xFF00 }

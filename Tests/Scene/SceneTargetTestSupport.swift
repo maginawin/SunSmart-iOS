@@ -11,6 +11,7 @@ final class Element {
     var unicastAddress: UInt16 = 0
     var observedSceneRegister: Set<UInt16>?
     weak var setupModel: Model?
+    var models: [Model] { setupModel.map { [$0] } ?? [] }
     func model(withSigModelId: Int) -> Model? { setupModel }
 }
 final class Model {
@@ -47,6 +48,7 @@ final class Node: NSObject {
     var network: Network? = MeshNetworkManager.instance.meshNetwork
     var subNetworkId: String? = "0001"
     var group: Group?
+    var isCompositionDataReceived = true
     var sceneSetupModel: Model? = Model()
     var additionalSceneSetupModels: [Model] = []
     var elements: [Element] { ([sceneSetupModel] + additionalSceneSetupModels).compactMap { $0?.parentElement } }

@@ -607,7 +607,9 @@ enum SpaceSyncTaskScope {
         for handle in handles {
             guard let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
                   let node = manager.meshNetwork?.node(withAddress: address) else { continue }
-            if let message = handle.message as? LightLightnessRangeSet {
+            if let message = handle.message as? ConfigCompositionDataGet, message.page == 0 {
+                progress.expect(node: node, change: .compositionData)
+            } else if let message = handle.message as? LightLightnessRangeSet {
                 progress.expect(node: node, change: .lightnessRange(message.range))
             } else if let message = handle.message as? ConfigModelSubscriptionAdd,
                       let group = manager.groups.first(where: { NodeSyncTopologyCapture.isMembershipGroup($0) && $0.address.address == message.address }) {
