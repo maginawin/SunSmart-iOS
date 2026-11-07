@@ -66,6 +66,25 @@ final class SceneConfigurationStore {
         }
     }
 
+    /// Project the validated import, including pending deletion, into the same
+    /// objects used by the management list and deletion retry. No radio work.
+    static func projectImportedRecords(_ records: [SceneConfigurationPayload.Record],
+                                       scope: SceneScope, network: MeshNetwork, nodes: [Node]) -> [Scene] {
+        records.map { record in
+            let scene = Scene(record.number, name: record.name)
+            scene.subNetworkId = scope.networkID
+            scene.info = .init(sceneId: record.number, imageId: record.imageId)
+            scene.info.displayOrder = record.displayOrder
+            scene.info.configuration = record.configuration
+            for node in nodes where node.sceneExecuteDatas.contains(where: { $0.sceneNumber == record.number }) {
+                scene.add(address: node.primaryUnicastAddress)
+            }
+            // Attach deletion intent before the SDK exposes or saves the Scene.
+            network.add(scene: scene)
+            return scene
+        }
+    }
+
     /// Reuse the caller's durable cloud-removal journal and App savepoint.
     /// No address-only fallback: missing identity proof leaves intent untouched.
     static func removeConfirmedIdentities(_ identities: [TimedSchedulerNodeIdentity], scope: SceneScope,
@@ -732,6 +751,8 @@ final class SceneConfigurationStore {
         return try SceneDraft(scene: scene)
     }
 
+    /// Loading restores display objects without changing deletion progress or
+    /// requiring editor access. Explicit cleanup owns preparation/finalization.
     func restoreSceneProjections() throws {
         let manager = MeshNetworkManager.instance
         guard let mesh = manager.meshNetwork else { throw Failure.unavailable }
@@ -739,30 +760,14 @@ final class SceneConfigurationStore {
         var failed = false
         for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
             guard !info.configurationLoadFailed else { throw Failure.persistence }
-            try restoreDeletionSchedulerCoverage(info: info, scope: scope)
-            guard let configuration = info.configuration else { continue }
-            if configuration.isDeleting, configuration.pendingOperations.isEmpty, !SceneDeletionCascade.hasPending(info) {
-                // Keep the Space usable so its Schedule/Switch cleanup can run.
-                // Only a known reference defers release; persistence/identity
-                // errors from finalization still fail the recovery attempt.
-                if !SceneDeletionCascade.canFinish(info: info) { continue }
-                do { try finishDeletion(info: info, scope: scope) }
-                catch { failed = true }
-                continue
-            }
-            if configuration.isDeleting, !mesh.scenes.contains(where: { $0.number == info.sceneId }) {
-                // An absent SDK row is not physical cleanup evidence. Preserve
-                // unknown/pending targets and the number instead of resurrecting it.
-                continue
-            }
+            guard info.configuration != nil else { continue }
             if case .projectionPending = project(info, scope: scope) { failed = true }
         }
         if failed { throw Failure.persistence }
     }
 
-    /// Explicit Sync Devices retry may recover an SDK orphan for cleanup only.
-    /// Attach its tombstone before exposing the projection; never allocate a new
-    /// number, regenerate operations, or make it selectable for Recall/Store.
+    /// Explicit Sync Devices retry prepares reference coverage and finalizes
+    /// completed deletion. Projection recovery preserves the original intent.
     struct DeletionRetryFailure: Error { let underlying: Error }
 
     func prepareDeletionRetries() throws {
@@ -785,21 +790,19 @@ final class SceneConfigurationStore {
                     continue
                 }
                 if let existing = mesh.scenes.first(where: { $0.number == info.sceneId }), !existing.info.projectionPending { continue }
-                if case .projectionPending = project(info, scope: scope, deletionRetry: true) { throw Failure.persistence }
+                if case .projectionPending = project(info, scope: scope) { throw Failure.persistence }
             }
         } catch {
             throw DeletionRetryFailure(underlying: error)
         }
     }
 
-    private func project(_ info: SceneInfo, scope: SceneScope, deletionRetry: Bool = false) -> SceneCommitResult {
+    private func project(_ info: SceneInfo, scope: SceneScope) -> SceneCommitResult {
         let manager = MeshNetworkManager.instance
         guard let network = manager.meshNetwork, network.uuid.uuidString == scope.meshUUID,
               manager.currentNetworkKey.networkId.hex == scope.networkID,
               let configuration = info.configuration else { return .projectionPending(number: info.sceneId) }
         let existing = network.scenes.first { $0.number == info.sceneId }
-        // A tombstone reserves its number but must not resurrect an executable Scene.
-        if configuration.isDeleting, existing == nil, !deletionRetry { return .projectionPending(number: info.sceneId) }
         if let existing, existing.subNetworkId != scope.networkID { return .projectionPending(number: info.sceneId) }
         let scene = existing ?? Scene(info.sceneId, name: configuration.name)
         let oldName = scene.name

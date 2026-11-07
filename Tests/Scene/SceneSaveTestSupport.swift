@@ -65,13 +65,18 @@ extension Network {
         Scene.diskNumbers.remove(number)
         Self.didRemove?()
     }
-    func add(scene: Scene) { MeshNetworkManager.instance.scenes.append(scene) }
+    func add(scene: Scene) {
+        scene.network = self
+        MeshNetworkManager.instance.scenes.append(scene)
+        _ = scene.save()
+    }
 }
 extension Scene {
     static var sdkSaveFails = false
     static var diskNumbers: Set<UInt16> = []
     static func loadAddresses(meshUUID: String) -> [UInt16] { Array(diskNumbers) }
     convenience init(_ number: UInt16, name: String) { self.init(number); self.name = name }
+    func add(address: UInt16) { if !addresses.contains(address) { addresses.append(address) } }
     func save() -> Bool {
         guard !Self.sdkSaveFails else { return false }
         Self.diskNumbers.insert(number); return true

@@ -2733,29 +2733,8 @@ extension SpaceData {
             }
             try SceneConfigurationStore.importRecords(incomingSceneRecords,
                 scope: .init(meshUUID: meshUUID, networkID: self.meshNetworkId))
-            // Deleting records remain App tombstones and reserve their original number.
-            let scenes: [Scene] = sceneDicts.compactMap { sceneDict in
-                let sceneJson = JSON(sceneDict)
-                if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
-                    guard !DeviceEmerFireData.reservedSceneNumbers.contains(sceneNumber) else {
-                        return nil
-                    }
-                    guard let record = incomingSceneRecords.first(where: { $0.number == sceneNumber }),
-                          record.configuration?.isDeleting != true else { return nil }
-                    let scene = Scene(sceneNumber, name: name)
-                    scene.subNetworkId = self.meshNetworkId
-                    let existNodes = nodes.filter({ $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber }) })
-                    existNodes.forEach({
-                        scene.add(address: $0.primaryUnicastAddress)
-                    })
-                    network.add(scene: scene)
-                    scene.info = .init(sceneId: sceneNumber, imageId: sceneJson["imageId"].int ?? 0)
-                    scene.info.displayOrder = record.displayOrder
-                    scene.info.configuration = record.configuration
-                    return scene
-                }
-                return nil
-            }
+            let scenes = SceneConfigurationStore.projectImportedRecords(incomingSceneRecords,
+                scope: .init(meshUUID: meshUUID, networkID: self.meshNetworkId), network: network, nodes: nodes)
             
             // 日程
             guard Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId) else {
@@ -2917,7 +2896,7 @@ extension SpaceData {
             self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }) ?? nodes).count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count
             self.groupCount = groups.filter({ !$0.isVirtual }).count
-            self.sceneCount = scenes.count
+            self.sceneCount = Scene.listedScenes(scenes).count
             self.scheheduleCount = schedules.count
             self.switchesCount = switches.count
             // Persist the authoritative version inside this savepoint before the

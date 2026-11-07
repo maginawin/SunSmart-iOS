@@ -1348,6 +1348,12 @@ extension Group {
 
 extension Scene {
 
+    /// Management and Space summaries include pending deletion until cleanup
+    /// finishes. EFC event numbers are not user scenes.
+    static func listedScenes(_ scenes: [Scene]) -> [Scene] {
+        scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }
+    }
+
     static func sortedForDisplay(_ scenes: [Scene]) -> [Scene] {
         scenes.sorted {
             SceneDisplayOrder.precedes(number: $0.number, order: $0.info.displayOrder,

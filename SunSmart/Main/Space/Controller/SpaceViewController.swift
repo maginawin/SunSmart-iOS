@@ -132,7 +132,7 @@ extension SpaceData {
         deviceCount = nodes.count
         luminairesCount = nodes.filter { $0.deviceType == .light }.count
         groupCount = network.groups.filter { !$0.isVirtual }.count
-        sceneCount = network.scenes.count
+        sceneCount = Scene.listedScenes(network.scenes).count
         scheheduleCount = Schedule.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).count
         switchesCount = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).count
     }
@@ -1425,8 +1425,9 @@ class SpaceViewController: WMPageController {
             self.space.groupCount = MeshNetworkManager.instance.groups.count
             saveData = true
         }
-        if self.space.sceneCount != MeshNetworkManager.instance.scenes.count {
-            self.space.sceneCount = MeshNetworkManager.instance.scenes.count
+        let listedSceneCount = Scene.listedScenes(MeshNetworkManager.instance.scenes).count
+        if self.space.sceneCount != listedSceneCount {
+            self.space.sceneCount = listedSceneCount
             saveData = true
         }
         if self.space.scheheduleCount != MeshNetworkManager.instance.schedules.count {

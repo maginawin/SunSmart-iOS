@@ -200,15 +200,17 @@ final class SyncExecutionSession {
         delete(scene)
         check(failures == failedBefore + 1 && manager.scenes.first === reused,
               "old completed operation must never remove a reused number")
-        // A missing SDK row with actual pending cleanup must stay reserved.
+        // Ordinary re-entry restores a visible, non-callable deletion retry.
         (scene, a, b, x, group) = try fixture()
         try store.prepareDeletion(scene: scene); manager.scenes = []
         try store.restoreSceneProjections()
-        check(manager.scenes.isEmpty && (try! persisted())!.configuration!.pendingOperations.count == 2)
+        check(manager.scenes.count == 1 && (try! persisted())!.configuration!.pendingOperations.count == 2)
+        check(!SceneCommandBuilder.isSelectable(scene: manager.scenes[0]))
         check(try! store.nextAvailableNumber() == 2)
         let orphanConfiguration = scene.info.configuration!
+        manager.scenes = []; Scene.diskNumbers = []
         Scene.sdkSaveFails = true
-        do { try store.prepareDeletionRetries(); fatalError("cleanup projection failure ignored") } catch {}
+        do { try store.restoreSceneProjections(); fatalError("cleanup projection failure ignored") } catch {}
         check(manager.scenes.count == 1 && manager.scenes[0].info.projectionPending)
         check(manager.scenes[0].info.configuration == orphanConfiguration && (try! persisted())!.configuration == orphanConfiguration)
         Scene.sdkSaveFails = false
@@ -330,12 +332,17 @@ final class SyncExecutionSession {
             try SceneConfigurationStore.importRecords(records, scope: scope)
             try store.restoreSceneProjections()
             check(try persisted()?.configuration == expected)
+            check(manager.scenes.first?.info.configuration == expected, "Visitor re-entry must retain a visible pending Scene")
+            check(!SceneCommandBuilder.isSelectable(scene: manager.scenes[0]) || !deleting)
+            do { try store.prepareDeletionRetries(); check(!deleting, "Visitor deletion retry accepted") }
+            catch { check(deleting) }
             // A successful Editor import preserves pending work; it cannot
             // turn an earlier Visitor import into completed device execution.
             SpaceData.value.permission = .editor; SpaceConfigurationSafety.recovery.authority = .writable
             try SceneConfigurationStore.importRecords(records, scope: scope)
             try store.restoreSceneProjections()
             if deleting {
+                manager.scenes = []; Scene.diskNumbers = []
                 Scene.sdkSaveFails = true
                 do { try store.prepareDeletionRetries(); fatalError("SDK deletion projection failure ignored") }
                 catch { check(error is SceneConfigurationStore.DeletionRetryFailure) }

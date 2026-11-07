@@ -157,7 +157,7 @@ class ScenesViewController: UIViewController {
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     private var scenes: [Scene] = []
     private var visibleScenes: [Scene] {
-        Scene.sortedForDisplay(MeshNetworkManager.instance.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) })
+        Scene.sortedForDisplay(Scene.listedScenes(MeshNetworkManager.instance.scenes))
     }
 
     init(space: SpaceData) {

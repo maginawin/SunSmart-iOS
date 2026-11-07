@@ -89,6 +89,16 @@ def run(suite):
                 store.write_text((ROOT / 'SunSmart/Main/Scene/Model/SceneConfigurationStore.swift').read_text().replace('import NordicSigMeshSDK', ''))
                 sources += [store, sdk / 'Sources/NordicSigMeshSDK/MeshLib/Scene/SceneRegisterPolicy.swift']
                 path = tmp / 'SaveSupport.swift'; path.write_text(harness); sources += [path]
+                if suite == 'roundtrip-storage':
+                    mesh = (ROOT / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
+                    commands = (ROOT / 'SunSmart/Main/Scene/Model/SceneCommandBuilder.swift').read_text()
+                    event_numbers = section('SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData+Sync.swift',
+                                            '    /// EFC 状态事件', '    var hasSyncableConfiguration:')
+                    display = tmp / 'SceneDisplay.swift'
+                    display.write_text('enum DeviceEmerFireData {\n' + event_numbers + '\n}\nextension Scene {\n'
+                        + function(mesh, '    static func listedScenes(') + '\n}\nenum SceneCommandBuilder {\n'
+                        + function(commands, '    static func isSelectable(') + '\n}')
+                    sources += [display]
             else:
                 harness = (ROOT / 'Tests/Scene/SceneConfigurationPersistenceTests.swift').read_text()
                 harness = harness.replace('// ACTUAL_SCENE_INFO', section('SunSmart/Common/Data/MeshNetwork+SunSmart.swift', 'class SceneInfo {', '\nclass GroupInfo {'))
