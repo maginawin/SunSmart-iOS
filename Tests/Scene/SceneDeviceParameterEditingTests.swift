@@ -17,6 +17,9 @@ final class Node {
 extension SceneParameters {
     // PRODUCTION_RESOLVE
 }
+enum SceneDevicesSelectionView {
+    // PRODUCTION_SUMMARY
+}
 
 // Minimal UIKit/SnapKit surface needed to execute the unchanged editor method.
 final class EditingConstraints {
@@ -118,6 +121,8 @@ func runSceneDeviceParameterEditingTests() throws {
         let node = Node(); node.productIdentifier = product; node.changeControlPage = preference; node.rawSupportCct = hardware
         let original: UInt16 = hardware ? 5100 : 0
         let page = try SceneDeviceParameterEditingHarness([member(a, original)], nodes: [a: node])
+        check(SceneDevicesSelectionView.summary(value(page, a), node: node) == (expected ? "50% · \(original)K" : "50%"),
+              "device row uses hardware, preference and product default")
         page.editDevices(.device(a))
         let sheet = page.picker!
         check(sheet.showCct == expected, "display uses hardware, preference and product default")
@@ -148,6 +153,7 @@ func runSceneDeviceParameterEditingTests() throws {
     let offlinePage = try SceneDeviceParameterEditingHarness([member(a, 6500)], nodes: [a: offline])
     offlinePage.editDevices(.device(a)); offlinePage.picker!.lightnessSliderView.value = 70; offlinePage.picker!.shadeViewAction()
     check(value(offlinePage, a).cct == 6500, "offline hidden CCT is preserved even outside the current range")
+    check(SceneDevicesSelectionView.summary(value(offlinePage, a), node: offline) == "70%", "offline single-white row hides stored CCT")
     let missingPage = try SceneDeviceParameterEditingHarness([member(a, 4500)], nodes: [:])
     missingPage.editDevices(.device(a)); missingPage.picker!.lightnessSliderView.value = 70; missingPage.picker!.shadeViewAction()
     check(value(missingPage, a).cct == 4500 && !missingPage.picker!.showCct, "unresolved identity preserves its CCT")
@@ -158,6 +164,8 @@ func runSceneDeviceParameterEditingTests() throws {
         changing.editDevices(.device(a))
         let callback = changing.picker!.pickerCallback!
         node.changeControlPage = initiallyVisible ? .singleWhite : .tunableWhite
+        check(SceneDevicesSelectionView.summary(value(changing, a), node: node) == (initiallyVisible ? "50%" : "50% · 4500K"),
+              "row refresh reads the current control-page preference")
         callback(true, 80, 5500)
         check(value(changing, a).cct == 4500, "both open-time and commit-time CCT eligibility are required")
         changing.editDevices(.device(a))
@@ -188,5 +196,11 @@ func runSceneDeviceParameterEditingTests() throws {
     let encoded = try SceneConfiguration(kind: .devices, name: "Roundtrip", deviceMembers: selected.draft.deviceMembers).encoded()
     let decoded = try SceneConfiguration.decode(encoded)
     check(decoded.deviceMembers == selected.draft.deviceMembers, "serialization retains mixed CCT values")
+    let relay = Node(); relay.lightnessModel = nil
+    let on = member(a, 4500).parameters
+    let off = SceneParameters(isOn: false, lightness: 32768, cct: 4500)
+    check(SceneDevicesSelectionView.summary(on, node: relay) == "ON", "relay row remains ON")
+    check(SceneDevicesSelectionView.summary(off, node: node) == "OFF", "off row remains OFF")
+    check(SceneDevicesSelectionView.summary(on, node: nil) == "ON", "missing device retains existing summary fallback")
     print("device parameter editing: \(checks) passed")
 }

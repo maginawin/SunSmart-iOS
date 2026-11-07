@@ -107,6 +107,8 @@ def run(suite):
                                       .replace('// PRODUCTION_EDITOR_HEADER', header_method))
             sources += [ROOT / 'SunSmart/Main/Device/Filter/Model/DeviceNameFilterSession.swift', ROOT / 'SunSmart/Main/Scene/Model/SceneDraftSelection.swift', selection_tests]
             editing = (ROOT / 'Tests/Scene/SceneDeviceParameterEditingTests.swift').read_text()
+            editing = editing.replace('// PRODUCTION_SUMMARY', function(
+                (ROOT / 'SunSmart/Main/Scene/View/SceneDevicesSelectionView.swift').read_text(), '    static func summary('))
             editing = editing.replace('// PRODUCTION_EDIT_DEVICES', '\n'.join(function(selection_source, marker).replace('private func', 'func') for marker in [
                 '    private func editDevices(', '    private func accepts(']))
             sdk_node = (ROOT / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Propertys.swift').read_text()

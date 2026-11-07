@@ -484,7 +484,7 @@ final class SceneDevicesSelectionView: UIView, UITableViewDataSource, UITableVie
         guard parameters.isOn else { return "OFF".localizedString }
         guard node?.lightnessModel != nil else { return "ON".localizedString }
         let lightness = Node.getLightness100(lightness: parameters.lightness)
-        return node?.effectiveSupportCct == true ? "\(lightness)% · \(parameters.cct)K" : "\(lightness)%"
+        return node?.singleDeviceDisplaySupportCct == true ? "\(lightness)% · \(parameters.cct)K" : "\(lightness)%"
     }
 }
 
