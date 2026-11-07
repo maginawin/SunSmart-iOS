@@ -77,6 +77,7 @@ class SyncDevicesViewController: UIViewController {
     private var preparationID = UUID()
     private var preparationTask: _Concurrency.Task<Void, Never>?
     private var isPreparingTaskPlan = false
+    private var preparationHUDVisible = false
     private var needsTaskPreparation = true
     private let syncDisplayContext = SyncDevicesDisplayContext()
     private var hdbAwaitingInitialization: [Node] = []
@@ -155,15 +156,16 @@ class SyncDevicesViewController: UIViewController {
 
     private func rebuildTaskPlan(resume: Bool) {
         guard !hasLeftSyncPage else { return }
+        hidePreparationHUD()
         preparationTask?.cancel()
         preparationID = UUID()
         let identifier = preparationID
         isPreparingTaskPlan = true
         needsTaskPreparation = true
         syncState = resume ? .inSync : .syncFailure
-        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         updateSyncStateUI()
         if gatewayContext != nil {
+            schedulePreparationHUD(identifier)
             buildPreparedTaskPlan(resume: resume)
             return
         }
@@ -198,15 +200,14 @@ class SyncDevicesViewController: UIViewController {
             }
             return true
         }
-        XWHUDManager.hideInView(with: view)
         SceneRestoreConfirmation.prepareIfNeeded(nodes: nodes, sceneNumber: sceneNumber,
                                                  isCurrent: isCurrent) { [weak self] result in
             guard let self, isCurrent() else { return }
             switch result {
             case .ready:
+                self.schedulePreparationHUD(identifier)
                 self.preparationTask = Task { @MainActor [weak self] in
                     guard let self, isCurrent() else { return }
-                    XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
                     let cleanupError = await SpaceSyncCleanupCoordinator.prepareForDeviceSync()
                     guard isCurrent() else { return }
                     if let error = cleanupError {
@@ -229,18 +230,32 @@ class SyncDevicesViewController: UIViewController {
         !hasLeftSyncPage && isPreparingTaskPlan && preparationID == identifier
     }
 
+    private func schedulePreparationHUD(_ identifier: UUID) {
+        executionSession.environment.delay(0.15) { [weak self] in
+            guard let self, self.acceptsPreparation(identifier), !self.preparationHUDVisible else { return }
+            self.preparationHUDVisible = true
+            XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
+        }
+    }
+
+    private func hidePreparationHUD() {
+        guard preparationHUDVisible else { return }
+        preparationHUDVisible = false
+        XWHUDManager.hideInView(with: view)
+    }
+
     private func cancelTaskPreparation() {
         preparationID = UUID()
         preparationTask?.cancel()
         preparationTask = nil
         isPreparingTaskPlan = false
+        hidePreparationHUD()
     }
 
     private func failTaskPreparation(_ message: String?) {
         cancelTaskPreparation()
         needsTaskPreparation = true
         syncState = .syncFailure
-        XWHUDManager.hideInView(with: view)
         tableView.reloadData()
         updateSyncStateUI()
         if let message { XWHUDManager.showErrorTipHUD(message) }
@@ -281,11 +296,16 @@ class SyncDevicesViewController: UIViewController {
             self.hdbAwaitingInitialization = nodes.filter { !$0.isKeybindComplete && (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }
             HDBDeviceSyncService.prepareIntents(nodes: nodes)
         }
-        let scopeIsCurrent = gatewayContext?.capturePlan(for: type) ?? SpaceSyncTaskScope.capture()
+        let sceneProgress = SceneSyncProgress()
+        let scopeIsCurrent = gatewayContext?.capturePlan(for: type) ?? SpaceSyncTaskScope.capture(sceneProgress: sceneProgress)
         let isCurrent = { [weak self] in
             scopeIsCurrent() && self?.permitsSceneReferences() == true
         }
         self.executionSession.environment.configurationIsCurrent = isCurrent
+        self.executionSession.environment.configurationWillSend = { [weak self] handles in
+            guard self?.gatewayContext == nil, isCurrent() else { return }
+            SpaceSyncTaskScope.expectSceneProgress(handles, in: sceneProgress)
+        }
         if resume { self.syncState = .inSync }
         let builder = SyncTaskPlanBuilder(
             type: self.type, initialState: self.syncState,
@@ -398,7 +418,7 @@ class SyncDevicesViewController: UIViewController {
             }
         }
         self.proximityLightingTaskModels = result.proximityLightingTasks
-        XWHUDManager.hideInView(with: self.view)
+        hidePreparationHUD()
         result.failureMessages.forEach { XWHUDManager.showErrorTipHUD($0) }
         if self.syncState == .inSync {
             self.startSync()

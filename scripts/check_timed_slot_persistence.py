@@ -68,6 +68,9 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     update = function(target_source, '    func updateData(message: MeshMessage,')
     ack = update[update.index('        case is SchedulerActionSet:'):update.index('        case is LightLCLightOnOffSet,')]
     harness.write_text(harness.read_text().replace('// ACTUAL_SCHEDULER_ACK', ack))
+    proxy = (sdk / 'Sources/NordicSigMeshSDK/MeshLib/Manager/MeshProxyMessageCommand.swift').read_text()
+    harness.write_text(harness.read_text().replace('// ACTUAL_SCHEDULER_SUCCESS', function(proxy, '    var isSuccessful: Bool'))
+                       + '\n' + (root / 'Tests/Timed/TimedSchedulerResultTests.swift').read_text())
     controller = (root / 'SunSmart/Main/Timed/Controller/ScheduleAddViewController.swift').read_text()
     create = function(controller, '    @objc private func saveBtnAction()')
     edit = function(controller, '    @objc private func doneBtnAction()')
@@ -78,13 +81,31 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     harness.write_text(harness.read_text() + '\n' + (root / 'Tests/Timed/TimedDeviceSceneEntryTests.swift').read_text()
                        .replace('// ACTUAL_CREATE_DECISION', create)
                        .replace('// ACTUAL_EDIT_PREREAD', edit))
+    space_controller = (root / 'SunSmart/Main/Space/Controller/SpaceViewController.swift').read_text()
+    cleanup = (root / 'SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift').read_text()
+    harness.write_text(harness.read_text()
+        .replace('    // ACTUAL_MARK_LOCAL_CHANGE', function(space_controller, '    func markLocalChangePendingCloudSync('))
+        .replace('    // ACTUAL_MARK_UPLOAD', function(space_controller, '    private func markSpaceUploadNeeded('))
+        + '\n' + (root / 'Tests/Timed/TimedCleanupRoundTripTests.swift').read_text()
+        + '\nenum SpaceSyncCleanupCoordinator {\n' + function(cleanup, '    static func cleanupSchedules(') + '\n}\n')
     runtime = directory / 'Bindings.swift'
+    lifecycle = '--scheduler-lifecycle' in sys.argv
+    if lifecycle:
+        from timed_scheduler_lifecycle_source import expand
+        harness.write_text(expand(harness.read_text(), root, sdk))
     runtime.write_text((root / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text().replace('import NordicSigMeshSDK', ''))
+    runtime.write_text(runtime.read_text() + '\n' + (root / 'SunSmart/Main/Timed/Model/TimedSchedulerTaskCoordinator.swift').read_text().replace('import NordicSigMeshSDK', ''))
     resolver = directory / 'SceneResolver.swift'
     resolver.write_text((root / 'SunSmart/Main/Scene/Model/SceneTargetResolver.swift').read_text().replace('import NordicSigMeshSDK', ''))
     binary = directory / 'Tests'
-    subprocess.run(['swiftc', '-parse-as-library', '-I', str(directory), '-L', str(directory),
+    subprocess.run(['swiftc', '-parse-as-library', *(['-D', 'DEBUG'] if lifecycle else []), '-I', str(directory), '-L', str(directory),
                     '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(directory),
+                    str(root / 'SunSmart/Common/Data/HDBConfiguration.swift'),
+                    str(root / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'),
+                    str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+                    str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),
+                    str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift'),
+                    str(root / 'SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift'),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift'),
                     str(root / 'SunSmart/Common/Data/SceneDeleteCapability.swift'),
@@ -92,4 +113,17 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
                     str(root / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'), str(resolver),
                     str(sdk / 'Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSchedulerTask.swift'),
                     str(runtime), str(harness), '-o', str(binary)], check=True)
-    subprocess.run([str(binary), str(directory / 'app.sqlite')], check=True)
+    if lifecycle:
+        result = subprocess.run([str(binary), str(directory / 'app.sqlite')], text=True, capture_output=True)
+        if result.returncode:
+            print(result.stdout)
+            print(result.stderr, file=sys.stderr)
+            result.check_returncode()
+        for expected in ['stage=completed', 'reason=unknownModels', 'reason=nodeSave',
+                         'reason=releaseScheduleSave', 'reason=cancelledBeforeApply',
+                         'reason=cancelledOwner', 'reason=requiresFullRead']:
+            assert expected in result.stdout, f'Missing runtime diagnostic: {expected}'
+        print('\n'.join(line for line in result.stdout.splitlines() if line.startswith('PASS:')))
+        print('PASS: runtime diagnostics distinguish observation rejection, unknown Models, persistence and cancellation')
+    else:
+        subprocess.run([str(binary), str(directory / 'app.sqlite')], check=True)

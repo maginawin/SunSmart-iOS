@@ -7,6 +7,7 @@ typealias Address = UInt16
 typealias SceneNumber = UInt16
 typealias SchedulerAction = Schedule.Action
 typealias SchedulerRegistryEntry = Entry
+typealias MeshMessage = Any
 enum SchedulerSetupModelOwner { case ordinary, lightLC }
 extension UInt16 {
     init?(hex: String) { self.init(hex, radix: 16) }
@@ -112,6 +113,7 @@ final class Node: NSObject {
     var network = MeshNetworkManager.instance.meshNetwork
     var subNetworkId: String? = MeshNetworkManager.instance.currentNetworkKey.networkId.hex
     var schedulerSetupModels = [Model(), Model()]
+    var collectionSchedulerSetupModel: Model? { nil }
     var allSchedulerModelEntrys: [Model: [Int: Entry]] = [:]
     var schedulerActions: [Int: Entry] = [:]
     var sceneSetupModel: Model? = Model()
@@ -139,13 +141,14 @@ final class Node: NSObject {
     func clearSyncStateCache() {}
     func completeGroupSceneRemoval(sceneId: UInt16) -> Bool { true } // Scene lifecycle is exercised by the Scene suite.
     var scheduleIds: [Int] = []
-    @discardableResult func savePropertys() -> Bool { true }
+    var propertiesSaveSucceeds = true
+    @discardableResult func savePropertys() -> Bool { propertiesSaveSucceeds }
     func rebuildTimedSchedulerActions() {
         schedulerActions = allSchedulerModelEntrys.values.reduce(into: [:]) { result, entries in
             result.merge(entries) { _, new in new }
         }
     }
-    func updateData(message: Any, isSuccess: Bool, model: Model?) {
+    func updateData(message: Any, isSuccess: Bool, model: Model?, finalizeSchedulerBinding: Bool = true) {
         guard isSuccess else { return }
         appliedMessages += 1
         switch message {
@@ -155,11 +158,6 @@ final class Node: NSObject {
     }
 }
 extension Data { var hex: String { map { String(format: "%02X", $0) }.joined() } }
-enum SchedulerModelSnapshot {
-    static func keyFingerprint(_ value: [String: Any]) throws -> String {
-        SHA256.hash(data: Data((value["deviceKey"] as! String).uppercased().utf8)).map { String(format: "%02x", $0) }.joined()
-    }
-}
 final class Group: NSObject {
     struct GroupAddress: Equatable { var address: Address = 0xC001 }
     var address = GroupAddress(), name: String? = nil
@@ -237,19 +235,56 @@ enum SceneDeletionCascade {
 }
 final class MeshMessageHandle: NSObject {
     var schedulerTask: MeshSchedulerTask?; var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true
+    var schedulerAdmission: (() -> Void)?
+    var transmissionIsValid: (() -> Bool)?, responseIsValid: ((MeshMessage) -> Bool)?
+    var allAddresss: [Address] { [model?.parentElement?.unicastAddress ?? 1] }
+    var respondAddresss: [Address] = []
+    // ACTUAL_SCHEDULER_SUCCESS
     override init() { super.init() }
     init(message: Any, model: Model) { self.message = message; self.model = model }
 }
-final class MeshProxyMessageCommand { static let shared = MeshProxyMessageCommand(); var isBusy = false }
+final class MeshProxyMessageCommand {
+    static let shared = MeshProxyMessageCommand(); var isBusy = false
+    func cancelSchedulerTasks(_ tasks: [MeshSchedulerTask]) { tasks.forEach { $0.cancel() } }
+}
 enum XWHUDManager { static func showTipHUD(_ message: String, isLineFeed: Bool) {} }
+// Minimal Space column adapter backed by the same real SQLite connection;
+// Schedule codec/save/load and nested transactions are production implementations.
 final class SpaceData {
+    enum Permission { case owner, editor, visitor }
     static var savesSucceed = true
+    var permission = Permission.owner
     var timedSchemaVersion = 1
     var meshUUID = MeshNetworkManager.instance.meshNetwork!.uuid.uuidString
-    static func load(subNetworkId: String) -> SpaceData? { SpaceData() }
-    func save() -> Bool { Self.savesSucceed }
+    var lastUpdate: Int64 = 10, lastUploadCloudTimestamp: Int64? = 10
+    var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) }
+    static func load(subNetworkId: String) -> SpaceData? {
+        guard let db = SunSmartDataManager.shared.db else { return nil }
+        let space = SpaceData()
+        try! db.execute("CREATE TABLE IF NOT EXISTS timed_test_spaces (mesh TEXT PRIMARY KEY, revision INTEGER, confirmed INTEGER, schemaVersion INTEGER)")
+        if let row = try! db.prepare("SELECT revision, confirmed, schemaVersion FROM timed_test_spaces WHERE mesh = ?", space.meshUUID).first(where: { _ in true }) {
+            space.lastUpdate = row[0] as! Int64
+            space.lastUploadCloudTimestamp = row[1] as? Int64
+            space.timedSchemaVersion = Int(row[2] as! Int64)
+        }
+        return space
+    }
+    @discardableResult func save() -> Bool {
+        guard Self.savesSucceed, let db = SunSmartDataManager.shared.db else { return false }
+        do {
+            if let old = Self.load(subNetworkId: "") {
+                lastUpdate = max(lastUpdate, old.lastUpdate)
+                timedSchemaVersion = max(timedSchemaVersion, old.timedSchemaVersion)
+            }
+            try db.run("INSERT OR REPLACE INTO timed_test_spaces VALUES (?, ?, ?, ?)", meshUUID, lastUpdate, lastUploadCloudTimestamp, timedSchemaVersion)
+            return true
+        } catch { return false }
+    }
+    // ACTUAL_MARK_LOCAL_CHANGE
+    // ACTUAL_MARK_UPLOAD
 }
 enum SpaceConfigurationSafety {
+    enum SafetyError: Error { case persistenceFailed }
     static var missingTimedBaseline = false
     static func needsTimedUpgradeBaseline(_ space: SpaceData) -> Bool { missingTimedBaseline }
 }
@@ -283,6 +318,9 @@ enum ScheduleServer {
         var db = try Connection(path)
         SunSmartDataManager.shared.db = db
         Schedule.initDatabase()
+        try schedulerResultPersistence(path: path)
+        try timedCleanupRoundTrip(path: path)
+        try localIntentRevision(path: path)
         try nativeProfileBindingsSurviveUnrelatedEdits(db: db, path: path)
         try legacyCleanupRequiresOwnedSlot()
         try v3PersistenceAndProgress(db: db, path: path)
@@ -830,13 +868,30 @@ enum ScheduleServer {
         let raw: [String: Any] = ["spaceData": ["timedSchemaVersion": 3], "nodes": [rawNode], "groups": [], "scenes": [],
             "schedules": try JSONSerialization.jsonObject(with: JSONEncoder().encode([schedule]))]
         let shared = TimedSchedulerPayloadPolicy.exportPayload(raw)!
+        var incoming = shared, incomingRow = (shared["schedules"] as! [[String: Any]])[0]
+        for field in ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"] {
+            incomingRow[field] = ["ignored": true]
+        }
+        incoming["schedules"] = [incomingRow]
+        var historicalNode = rawNode
+        historicalNode["schedules"] = "unused"
+        historicalNode["custProps"] = ["schedulerModelStates": NSNull()]
+        incoming["nodes"] = [historicalNode]
         let imported = try JSONDecoder().decode([Schedule].self, from: JSONSerialization.data(
-            withJSONObject: TimedSchedulerPayloadPolicy.decodingSchedules(shared)!))[0]
+            withJSONObject: TimedSchedulerPayloadPolicy.decodingSchedules(incoming)!))[0]
+        precondition(imported.needDeleteNodeAddresses.isEmpty && imported.needDeleteGroupAddresses.isEmpty
+            && imported.needDeleteSceneNumbers.isEmpty)
         precondition(imported.save())
         SunSmartDataManager.shared.db = try Connection(path)
         let restored = Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
             meshNetworkId: manager.currentNetworkKey.networkId.hex, scheduleId: 104).first!
         precondition(restored.nodeSlots == schedule.nodeSlots && restored.nodeSlots!.first!.identity == node.timedSchedulerIdentity)
+        var readback = incoming
+        readback["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode([restored]))
+        let reexported = TimedSchedulerPayloadPolicy.exportPayload(readback)!
+        precondition(TimedSchedulerPayloadPolicy.canonical(reexported) == TimedSchedulerPayloadPolicy.canonical(shared))
+        precondition((reexported["nodes"] as! [[String: Any]])[0]["schedules"] == nil)
+        precondition(((reexported["schedules"] as! [[String: Any]])[0])["needDeleteNodeAddresses"] == nil)
         manager.schedules = [restored]
         let owner = node.schedulerSetupModels[0], other = node.schedulerSetupModels[1]
         node.allSchedulerModelEntrys = [owner: [binding.slot: restored.schedulerEntry]]
@@ -1038,10 +1093,4 @@ struct SceneMessageContext {
     var revision: UUID? = nil
     func matches(node: Node) -> Bool { false }
     func apply(node: Node, successful: Bool, beforePersist: (() -> Bool)? = nil) -> Bool { false }
-}
-
-// Transport admission is outside this SQLite suite; dedicated task tests execute it.
-enum TimedSchedulerTaskCoordinator {
-    static func configurationSaved(_ schedule: Schedule, meshUUID: String, networkID: String) {}
-    static func attach(_ handles: [MeshMessageHandle], node: Node, schedule: Schedule) {}
 }

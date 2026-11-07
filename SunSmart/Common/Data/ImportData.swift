@@ -1950,6 +1950,13 @@ extension SpaceData {
             guard applyRemoteSpaceAuthorityRestrictions(remoteMetadata) else { return .rejected("remoteMetadataPersistence") }
             return .rejected(failure)
         }
+        if !initialize, let issue = await SpaceConfigurationSafety.equalCloudNodeProtectionIssue(self, remote: incomingSpaceJsonData) {
+            guard issue != "staleImportPreparation" else { return .rejected(issue) }
+            guard applyRemoteSpaceAuthorityRestrictions(remoteMetadata) else { return .rejected("remoteMetadataPersistence") }
+            SpaceConfigurationSafety.recordSyncFailure(self, error: syncCloudError ?? SpaceConfigurationSafety.uploadUnconfirmed,
+                stage: issue, remoteTimestamp: SpaceConfigurationIntegrityPolicy.integer(incomingSpaceJsonData["updateTimestamp"]))
+            return .preserved(issue)
+        }
         let newerCloudImport = !initialize && SpaceConfigurationSafety.prefersNewerCloud(self, remote: incomingSpaceJsonData)
         let authoritativeCloudImport = newerCloudImport || SpaceConfigurationSafety.hasNewerCloudImport(self)
         let equalCloudImport = !initialize && SpaceConfigurationSafety.importsEqualCloudSnapshot(self, remote: incomingSpaceJsonData)

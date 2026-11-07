@@ -127,7 +127,11 @@ def run(suite):
         elif suite in ['sync', 'integration']:
             flags += ['-D', 'SCENE_CASCADE_TASK_BOUNDARY']
             sources += [ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift']
-            sources += target_sources(tmp) + [ROOT / 'Tests/Scene/SceneCommandTestSupport.swift', ROOT / ('Tests/Scene/SceneCommandTests.swift' if suite == 'sync' else 'Tests/Scene/SceneIntegrationTests.swift')]
+            support = (ROOT / 'Tests/Scene/SceneCommandTestSupport.swift').read_text()
+            support = support.replace('// ACTUAL_EXPECT_SCENE_PROGRESS', function((ROOT / 'SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift').read_text(), '    static func expectSceneProgress('))
+            support = support.replace('// ACTUAL_ADD_MESSAGE', function((ROOT / 'SunSmart/Main/Space/Model/SyncExecutionEnvironment.swift').read_text(), '    func addMessage('))
+            command_support = tmp / 'CommandSupport.swift'; command_support.write_text(support)
+            sources += target_sources(tmp) + [command_support, ROOT / ('Tests/Scene/SceneCommandTests.swift' if suite == 'sync' else 'Tests/Scene/SceneIntegrationTests.swift')]
             if suite == 'integration':
                 picker = tmp / 'Pickers.swift'
                 text = (ROOT / 'Tests/Scene/ScenePickerIntegrationSupport.swift').read_text()
@@ -189,7 +193,7 @@ def run(suite):
             lifecycle_source += '\n' + function((ROOT / 'SunSmart/Common/Data/SceneCapacity.swift').read_text(), '    func needsSceneRemoval(')
             lifecycle_source += '\n' + function((ROOT / 'SunSmart/Common/Data/Node+SyncData.swift').read_text(), '    func getNodeNeedDeleteSceneDatas(')
             lifecycle_source += '\nvar syncReadGroup: Group? { group }\nvar scenes: [Scene] { MeshNetworkManager.instance.scenes.filter { scene in sceneExecuteDatas.contains { $0.sceneNumber == scene.number } } }\n'
-            lifecycle_source += '\nfunc updateData(message: Any, isSuccess: Bool, model: Model?) { guard isSuccess else { return }; switch message {\n' + deletion + '\ndefault: break\n} }\n'
+            lifecycle_source += '\nfunc updateData(message: Any, isSuccess: Bool, model: Model?, finalizeSchedulerBinding: Bool = true) { guard isSuccess else { return }; switch message {\n' + deletion + '\ndefault: break\n} }\n'
             if '    func completeGroupSceneRemoval(' in mesh:
                 lifecycle_source += function(mesh, '    @discardableResult\n    func completeGroupSceneRemoval(')
             lifecycle_source += '\n}\nextension Scene {\n'

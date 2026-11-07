@@ -140,9 +140,20 @@ enum TimedSchedulerPayloadPolicy {
     /// Never infer physical slots from IDs.
     static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] {
         var payload = withoutBindingGeneration(payload)
-        // Native v3 is strict. Legacy defaults must never turn a damaged new
-        // document into a valid empty configuration or a successful receipt.
-        if declaredSchema(payload) == 3 { return payload }
+        // v3 uses bindings, not legacy cleanup arrays or shared observations.
+        // Remove unused server fields before any downstream Schedule/SDK decoder
+        // can interpret them. Required v3 data is never defaulted or repaired here.
+        if declaredSchema(payload) == 3 {
+            if let nodes = payload["nodes"] as? [[String: Any]] {
+                payload["nodes"] = nodes.map(withoutSharedSchedulerObservation)
+            }
+            if let schedules = payload["schedules"] as? [[String: Any]] {
+                payload["schedules"] = schedules.map { row in
+                    row.filter { !["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"].contains($0.key) }
+                }
+            }
+            return payload
+        }
         if payload["schedules"] == nil { payload["schedules"] = [[String: Any]]() }
         if let schedules = payload["schedules"] as? [[String: Any]] {
             let defaults: [String: Any] = ["name": "", "enabled": false, "selectTarget": 0,
@@ -350,13 +361,7 @@ enum TimedSchedulerPayloadPolicy {
 
     private static func wireBindings(_ schedule: [String: Any]) -> [TimedSchedulerWireNodeSlot]? {
         guard let raw = schedule["nodeSlots"] as? [[String: Any]],
-              raw.allSatisfy({ value in
-                  guard Set(value.keys) == Set(["identity", "slot", "state", "actionAddress"]),
-                        let identity = value["identity"] as? [String: Any], Set(identity.keys) == ["unicastAddress"],
-                        let route = value["actionAddress"] as? [String: Any],
-                        Set(route.keys) == Set(["auto_on", "off", "recall"]) else { return false }
-                  return integer(value["slot"]) != nil
-              }),
+              raw.allSatisfy({ integer($0["slot"]) != nil }),
               let data = try? JSONSerialization.data(withJSONObject: raw),
               let slots = try? JSONDecoder().decode([TimedSchedulerWireNodeSlot].self, from: data),
               slots.allSatisfy(\.isValid),
@@ -556,9 +561,7 @@ enum TimedSchedulerPayloadPolicy {
                   Set(identities.map(\.unicastAddress)).count == nodes.count else { return nil }
             var elementsInSpace = Set<Int>()
             for node in nodes {
-                guard node["schedules"] == nil,
-                      (node["custProps"] as? [String: Any])?["schedulerModelStates"] == nil,
-                      let identity = identity(node: node),
+                guard let identity = identity(node: node),
                       let primary = Int(identity.unicastAddress, radix: 16),
                       let elements = node["elements"] as? [[String: Any]] else { return nil }
                 var supported = Set<String>()
@@ -590,7 +593,6 @@ enum TimedSchedulerPayloadPolicy {
                 "selectTarget": target, "action": action, "fadeTime": fade, "hour": hour,
                 "minute": minute, "dayOfWeek": days]
             let retired = ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"]
-            guard version != 3 || retired.allSatisfy({ schedule[$0] == nil }) else { return nil }
             for key in ["deviceAddresses", "groupAddresses"] + (version == 3 ? [] : retired) {
                 let raw = schedule[key] ?? [String]()
                 guard let addresses = raw as? [String], addresses.allSatisfy({ address in

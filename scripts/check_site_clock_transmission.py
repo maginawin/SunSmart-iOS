@@ -34,6 +34,9 @@ real += [sdk / ('nRFMeshProvision/Mesh Messages/Time and Scenes/' + n + '.swift'
 stubs = r'''
 import Foundation
 public typealias Address = UInt16
+extension UInt16 { var isUnicast: Bool { self > 0 && self < 0x8000 } }
+struct SchedulerGet: MeshMessage { var parameters: Data? { nil } }
+struct SchedulerActionGet: MeshMessage { var parameters: Data? { nil } }
 extension UInt16 { static let allNodes: UInt16 = 0xffff; static let timeSetupServerModelId: UInt16 = 0x1201 }
 public protocol MeshMessage { var parameters: Data? { get } }
 public protocol MeshResponse: MeshMessage {}
@@ -194,13 +197,43 @@ import Foundation
         pump(); check(MeshAPI.queued.isEmpty, "A validator call before source matching must not enqueue a transition")
         plan.handle.confirmMatchedResponse()
         _ = plan.handle.responseIsValid?(status); _ = plan.handle.responseIsValid?(status)
-        pump(); check(MeshAPI.queued.count == 1 && MeshAPI.queued.first?.message is TimeZoneSet, "One accepted TimeStatus adds one supplementary transition")
+        pump()
+        check(MeshAPI.queued.isEmpty && MeshNetworkManager.instance.deliveries.count == 1,
+              "Ordinary TimeSet must submit one supplementary plan without an acknowledged MeshAPI request")
         MeshNetworkManager.instance.currentApplicationKey.key = Data([9])
-        check(!MeshAPI.queued[0].prepareMessageForSend(), "AppKey changes reject an old supplementary plan")
-        MeshNetworkManager.instance.currentApplicationKey.key = Data([1]); MeshAPI.queued.removeAll()
+        MeshNetworkManager.instance.deliveries.removeFirst()(.success(())); pump()
+        check(MeshNetworkManager.instance.transmitted.isEmpty, "AppKey changes reject an old queued GATT plan")
+        MeshNetworkManager.instance.currentApplicationKey.key = Data([1])
+        for outcome in ["writeWithoutAck", "stop", "removed", "disconnected"] {
+            let next = SiteTimeSetMessageFactory.makePlan(node: node, model: model)!
+            let originalValidity = next.handle.transmissionIsValid
+            var operationCurrent = true
+            next.handle.transmissionIsValid = { operationCurrent && (originalValidity?() ?? true) }
+            check(next.handle.prepareMessageForSend(), "Ordinary TimeSet prepares")
+            next.handle.confirmMatchedResponse()
+            let response = TimeStatus(parameters: (next.handle.message as! TimeSet).parameters!)!
+            _ = next.handle.responseIsValid?(response); pump()
+            check(MeshAPI.queued.isEmpty && MeshNetworkManager.instance.deliveries.count == 1,
+                  "Supplementary TimeZone must not enter the ACK queue used by Schedule and Switch")
+            let before = MeshNetworkManager.instance.transmitted.count
+            if outcome == "stop" { operationCurrent = false }
+            if outcome == "removed" { network.nodes = [] }
+            if outcome == "disconnected" { MeshNetworkManager.instance.managedProxyIsReady = false }
+            MeshNetworkManager.instance.deliveries.removeFirst()(.success(())); pump()
+            check(MeshNetworkManager.instance.transmitted.count == before + (outcome == "writeWithoutAck" ? 1 : 0),
+                  "Supplementary GATT write obeys cancellation/identity/readiness without needing TimeZoneStatus")
+            if outcome == "writeWithoutAck" {
+                check(MeshNetworkManager.instance.transmitted.last == transition.parameters,
+                      "Ordinary sync writes the real future timezone payload")
+            }
+            _ = next.handle.responseIsValid?(response); pump()
+            check(MeshNetworkManager.instance.deliveries.isEmpty, "Repeated status cannot duplicate supplementary send")
+            network.nodes = [node]; MeshNetworkManager.instance.managedProxyIsReady = true
+        }
+        MeshNetworkManager.instance.transmitted.removeAll()
         site.timezone = nil
-        let phone = SiteTimeSetMessageFactory.resolve(storageValue: "")!
-        check(phone.storageValue == nil, "Empty Gateway target must match a missing Site timezone")
+        let phone = SiteTimeSetMessageFactory.resolve(storageValue: site.timezone)!
+        check(phone.storageValue == nil, "Missing Gateway target preserves the missing Site identity")
         var completed = false
         SiteTimeSetMessageFactory.sendPrepared(resolution: phone, model: model, isCurrent: { true }) { response in completed = response != nil }
         check(MeshAPI.queued.count == 1 && MeshAPI.queued[0].prepareMessageForSend(), "Gateway missing timezone must actually reach the wire")

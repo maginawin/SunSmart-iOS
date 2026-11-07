@@ -153,7 +153,8 @@ enum RecoveryMessage {
             let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
             let response = try JSONSerialization.jsonObject(with: data) as! [String: Any]
             let payload = response["data"] as! [String: Any]
-            let nodes = payload["nodes"] as! [[String: Any]]
+            require(SpaceData.canDecodeConfigurationImport(payload), "snapshot passes production configuration preflight")
+            let nodes = CloudConfigurationDefaults.space(payload)["nodes"] as! [[String: Any]]
             let decodedNodes = try nodes.map(CloudNodeImport.decode)
             require(decodedNodes.count == nodes.count, "snapshot retains every node at the SDK identifier boundary")
             let staged = await harness.stage(nodes)

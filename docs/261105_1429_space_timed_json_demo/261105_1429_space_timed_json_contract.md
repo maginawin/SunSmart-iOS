@@ -971,7 +971,7 @@ SDK 对照（路径相对于上述实际 SDK）：`nRFMeshProvision/Mesh Message
 | `nodes[].custProps.schedulerModelStates` | 含逐 Model 及 legacy 原始字节 | v3 不输出；其余 custProps 保留，删除后空对象可省略 |
 | 分享根 `formatVersion` | 2 | 3；format=sunSmartSpace、space 包装不变；云 API 不增加该包装 |
 
-新读端遇到 v3 携带已删除旧键，拒绝冲突格式并要求写端规范化，不能在两种来源不一致时任意选一个。未列出的节点身份、网络 Key、Groups、Scenes、权限及其他 custProps／spaceData 保持原契约；不能删除其他模块的 generation。
+2026-11-07 按用户确认的容错方向调整：v3 接收端忽略上述已删除旧键，不解析其内容，不恢复为设备观察或清理任务，也不因键存在或类型不同而拒绝。nodeSlots、identity、actionAddress 内多余键同样忽略，当前必需字段仍严格验证；本地完整身份仍从实际 Nodes 展开。App 上传继续只输出当前 v3 字段，无需服务器先清理历史数据才能进入 Space。未列出的节点身份、网络 Key、Groups、Scenes、权限及其他 custProps／spaceData 保持原契约；不能删除其他模块的 generation。实施及验证见 [容错调整记录](../261107_1019_space_restore_v3_legacy_node_schedules_analysis.md)。
 
 **变更前的 binding 节选**：UUID 和全零指纹仅作结构占位，不是可导入身份。
 

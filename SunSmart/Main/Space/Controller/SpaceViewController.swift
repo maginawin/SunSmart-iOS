@@ -81,6 +81,10 @@ extension SpaceData {
     }
 
     func commitLocalChangeForCloudSync(site currentSite: SiteData? = nil, changeType: SpaceChangeDataType) {
+        // Timed intent may already have committed its revision transactionally.
+        if let persisted = SpaceData.load(siteId: siteId, spaceId: id).first {
+            lastUpdate = max(lastUpdate, persisted.lastUpdate)
+        }
         refreshSummaryCountsFromSpaceMesh()
         if case .syncResult(let changed) = changeType, !changed {
             guard needUploadCloud else { return }

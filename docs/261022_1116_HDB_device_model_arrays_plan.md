@@ -225,6 +225,8 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 
 新描述存在于数据库和上传快照，导入及云端比较严格验证完整性与目标一致性，不接受旧格式缺字段。elementAddress 显式 null 仅表示设备无对应目标，不能执行 Set；字段缺失不能当成 null。failsafeDelay/installDate 不增加命令描述。下文完整 Space 与 HTTP 保存/回读约定也包括这些字段。
 
+2026-11-07 接收端容错调整：只解析和校验该字段当前使用的业务值及命令描述，忽略多余的历史键；lightingControl 不再限制只能有五个键，其他属性忽略不适用的 mapValues／models 等描述，failsafeDelay／installDate 忽略额外命令描述。Zone 只使用当前 groupId，不因同时带旧 groupAddress 而失败；groupId 缺失或非法仍拒绝。数据库与正常上传格式不变。详情见 [同步容错调整记录](261107_1019_space_restore_v3_legacy_node_schedules_analysis.md)。
+
 ### Space 快照与 HTTP 对接
 
 完整 Space 必须带同版本的 `spaceData.hdb`、`groups`、`nodes` 和正常 Mesh 数据。Zone 地址引用非 virtual Group；非空 Sensor 地址引用 `isVirtual=true` 的 Group。此标记是 App/SDK 的用途分类，Sensor 地址本身仍是普通组地址，不是 Label UUID。Node UUID、Primary Address、Model 清单必须相符；读取到有效 Node MAC 时还须与 HDB MAC 一致。HDB 的 nodeAddress、elementAddress、sensorGroupId、broadcastId、modelId、property、groupId 均使用十六进制字符串；HDB 中不再输出 groupAddress。SDK `groups[].address`、`nodes[].unicastAddress`、Model 标识保持原十六进制字符串格式。

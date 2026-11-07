@@ -21,6 +21,7 @@ def block(source, marker):
 def main():
     controller = (ROOT / 'SunSmart/Main/Space/Controller/SyncDevicesViewController.swift').read_text()
     installation = block(controller, '    private func installTaskPlan(').replace('private func', 'func', 1)
+    installation += '\n' + block(controller, '    private func hidePreparationHUD(').replace('private func', 'func', 1)
     production = 'import Foundation\n' + (ROOT / 'Tests/Sync/SyncRunLifecycleFixtures.swift').read_text()
     production += '\nfinal class InstallationHarness {\n' + (ROOT / 'Tests/Sync/SyncPlanInstallationHarness.txt').read_text() + installation + '\n}\n'
     with tempfile.TemporaryDirectory(prefix='sync-run-lifecycle-') as directory:

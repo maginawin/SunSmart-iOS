@@ -256,8 +256,64 @@ enum SpaceConfigurationSafety {
         return ["uploadReadbackConflict", "cloudConfigurationConflict"].contains(reason ?? "")
     }
 
-    /// Web edits may retain the Space timestamp. Equal versions, as well as
-    /// newer ones, select the complete cloud snapshot over local intent.
+    /// Equal versions cannot prove that an unknown upload reached the server.
+    /// Inspect the current local instances before any cloud selection retires
+    /// their receipt. No new durable state or upload/retry policy is introduced.
+    @MainActor
+    static func equalCloudNodeProtectionIssue(_ space: SpaceData, remote: [String: Any]) async -> String? {
+        guard remote["uuid"] as? String == space.id, SpaceMembershipCoordinator.accepts(remote),
+              !SpaceMembershipCoordinator.isLeaving(space), space.permission != .visitor,
+              remote["role"].map({ ($0 as? String) == "owner" || ($0 as? String) == "editor" }) ?? true,
+              let version = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
+              version == space.lastUpdate, version >= 0, version < Int64.max,
+              !hasPendingImport(space), !hasReviewedCloudImport(space),
+              let state = try? recoveryState(space), state.phase == .active, state.authority == .writable,
+              state.requiresRemoteImport != true, state.unbindRequested != true else { return nil }
+        let unknownSubmission = state.submission.map { $0.phase == .prepared || $0.permitsCloudRemoval == false } ?? false
+        guard unknownSubmission || space.needUploadCloud else { return nil }
+        guard let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote),
+              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let keys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+              SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint == keys.fingerprint else { return nil }
+        let confirmed = space.lastUploadCloudTimestamp
+        let local = await space.export(purpose: .cleanupInspection)
+        guard !Task.isCancelled, isCurrent(state, space: space), (try? recoveryState(space)) == state,
+              space.lastUpdate == version, space.lastUploadCloudTimestamp == confirmed,
+              SpaceData.load(siteId: space.siteId, spaceId: space.id).first?.lastUpdate == version else {
+            return "staleImportPreparation"
+        }
+        guard let local, let localNodes = SpaceCloudNodeRemovalPolicy.instances(local),
+              SpaceKeyIntegrity.pair(local, networkID: space.meshNetworkId)?.fingerprint == keys.fingerprint else {
+            return "unconfirmedLocalNodesUnavailable"
+        }
+        let missing = localNodes.filter { !remoteNodes.contains($0) }
+        guard !missing.isEmpty else { return nil }
+        if unknownSubmission {
+            // An absent legacy identity field is not proof that a prepared
+            // upload had no devices. Already deleted local instances are excluded.
+            guard let submitted = state.submission?.nodeIdentities else { return "unconfirmedLocalNodes" }
+            if missing.contains(where: { submitted.contains($0) }) { return "unconfirmedLocalNodes" }
+        }
+        guard space.needUploadCloud else { return nil }
+        let accepted = state.submission.flatMap { submission -> [SpaceCloudNodeRemovalPolicy.Instance]? in
+            guard submission.phase != .prepared, submission.permitsCloudRemoval != false else { return nil }
+            return submission.nodeIdentities
+        }
+        if let baseline = accepted ?? state.nodeIdentitiesBaseline {
+            return missing.contains(where: { !baseline.contains($0) }) ? "unconfirmedLocalNodes" : nil
+        }
+        guard let confirmed else { return "unconfirmedLocalNodes" }
+        // Legacy confirmed Spaces may lack an identity baseline. Only a known
+        // provisioning time after confirmation proves an unconfirmed addition.
+        let dictionaries = local["nodes"] as? [[String: Any]] ?? []
+        return zip(localNodes, dictionaries).contains { identity, node in
+            missing.contains(identity)
+                && (SpaceConfigurationIntegrityPolicy.integer(node["createdTimestamp"]) ?? 0) > confirmed
+        } ? "unconfirmedLocalNodes" : nil
+    }
+
+    /// Web edits may retain the Space timestamp. Import callers first check
+    /// equalCloudNodeProtectionIssue before selecting a complete cloud snapshot.
     @MainActor
     static func prefersNewerCloud(_ space: SpaceData, remote: [String: Any]) -> Bool {
         guard remote["uuid"] as? String == space.id, SpaceMembershipCoordinator.accepts(remote),
@@ -769,6 +825,34 @@ enum SpaceConfigurationSafety {
             }
             return true
         } catch { return false }
+    }
+
+    /// Repair historical saves that persisted Timed intent without advancing
+    /// the Space upload revision. Never infer a change from pendingApply alone.
+    static func restorePendingTimedUpload(_ space: SpaceData, payload: [String: Any]) -> Bool {
+        guard !space.needUploadCloud, let confirmed = space.lastUploadCloudTimestamp,
+              space.lastUpdate == confirmed, TimedSchedulerPayloadPolicy.schema(payload) == 3 else { return true }
+        guard canCleanSyncReferences(space), !hasPendingDeletionCleanup(space),
+              let state = try? recoveryState(space),
+              let local = TimedSchedulerPayloadPolicy.canonical(payload) else { return false }
+        guard let baseline = state.timedConfigurationBaseline else {
+            // An empty local Space does not prove a missed save. A nonempty one
+            // needs the existing baseline-review flow before claiming authority.
+            guard (payload["schedules"] as? [[String: Any]])?.isEmpty == false else { return true }
+            block(space, reason: "upgradeBaselineNeedsImport")
+            return recordSyncFailure(space, error: .configurationReviewRequired, stage: "cleanupTimedBaseline")
+        }
+        guard !TimedSchedulerPayloadPolicy.comparisonsMatch(baseline, local) else { return true }
+        let previous = space.lastUpdate
+        let saved = SunSmartDataManager.shared.configurationTransaction {
+            space.markLocalChangePendingCloudSync()
+            guard space.save() else { throw SafetyError.persistenceFailed }
+        }
+        guard saved else {
+            space.lastUpdate = previous
+            return recordSyncFailure(space, error: .configurationUnavailable, stage: "cleanupTimedRevision")
+        }
+        return true
     }
 
     /// A local Timed migration can precede its cloud upload. Only the exact
@@ -1392,6 +1476,14 @@ enum SpaceConfigurationSafety {
     /// Verify accepted/unknown outcomes before completing local state.
     @MainActor
     private static func importNewerCloudIfNeeded(_ space: SpaceData, remote: [String: Any]) async -> Swift.Result<Void, NetworkApiError>? {
+        if let issue = await equalCloudNodeProtectionIssue(space, remote: remote) {
+            guard issue != "staleImportPreparation" else { return .failure(uploadUnconfirmed) }
+            guard space.applyRemoteSpaceAuthorityRestrictions(remote) else { return .failure(.configurationUnavailable) }
+            let error = space.syncCloudError ?? uploadUnconfirmed
+            recordSyncFailure(space, error: error, stage: issue,
+                              remoteTimestamp: SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]))
+            return .failure(error)
+        }
         guard prefersNewerCloud(space, remote: remote) || hasNewerCloudImport(space) else { return nil }
         let outcome = await space.restoreConfiguration(spaceJsonData: remote, authoritativeGET: true, fixWithDefaults: false)
         guard outcome.status == .applied, !hasPendingImport(space), !isBlocked(space) else {

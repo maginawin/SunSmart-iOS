@@ -1,3 +1,5 @@
+import Foundation
+
 struct SceneRecallUnacknowledged { let scene: UInt16; init(_ scene: UInt16) { self.scene = scene } }
 struct GenericOnOffSet { let isOn: Bool; init(_ value: Bool) { isOn = value } }
 enum TransitionTime { case immediate }
@@ -41,4 +43,29 @@ enum SceneConfigurationStore {
     static func validateAccess(_ scope: SceneScope) throws {
         guard authorized else { throw TestPersistence.Failure.failed }
     }
+}
+
+// SDK message objects and cache writes are boundaries. Production routing,
+// delayed submission, plan comparison and Scene generation run unchanged.
+struct ConfigModelSubscriptionAdd { let address: UInt16 }
+struct ConfigModelSubscriptionDelete { let address: UInt16 }
+struct LightLightnessRangeSet { let range: ClosedRange<UInt16> }
+enum NodeSyncTopologyCapture {
+    static func isMembershipGroup(_ group: Group) -> Bool { !group.isVirtual && group.address.address < 0xFF00 }
+}
+extension Network {
+    func node(withAddress address: UInt16) -> Node? {
+        MeshNetworkManager.instance.realNodes.first { $0.primaryUnicastAddress == address || $0.addressAliases.contains(address) }
+    }
+}
+enum SpaceSyncTaskScope {
+    // ACTUAL_EXPECT_SCENE_PROGRESS
+}
+typealias MessageCommandSuccessfulCallback = (MeshMessageHandle, Int) -> Void
+typealias MessageCommandFailedCallback = (MeshMessageHandle) -> Void
+typealias MessageCommandFinishedCallback = ([MeshMessageHandle]) -> Void
+final class SceneProgressTransport {
+    var configurationWillSend: ([MeshMessageHandle]) -> Void = { _ in }
+    var send: ([MeshMessageHandle], TimeInterval, MessageCommandSuccessfulCallback?, MessageCommandFailedCallback?, MessageCommandFinishedCallback?) -> Void = { _, _, _, _, _ in }
+    // ACTUAL_ADD_MESSAGE
 }

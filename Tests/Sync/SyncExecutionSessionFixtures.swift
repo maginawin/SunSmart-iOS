@@ -1,9 +1,19 @@
 // Slot identity validation is exercised by TimedSlotPersistenceTests; this
 // fixture isolates the Session's protection/generation and callback ordering.
 extension Node {
-    @discardableResult func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) -> Bool {
+    @discardableResult func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true, finalizeSchedulerBinding: Bool = true) -> Bool {
         updateData(message: handle.message, isSuccess: isSuccess, model: handle.model)
         return isSuccess
+    }
+}
+extension Schedule {
+    // Production batch handling is injected by the script; SQLite/ownership use
+    // the Timed integration suite. Only this final storage boundary is controlled.
+    // ACTUAL_SCHEDULER_RESULTS
+    func reconcileBinding(on node: Node) -> Bool {
+        node.schedulerReconciliations += 1
+        if node.releaseInvalidatesReceipts { node.testHandles.forEach { $0.isSuccessful = false } }
+        return node.schedulerSaveSucceeds
     }
 }
 // Session 主体、任务选择、回写、重试和兼容模型来自生产；以下只替代 SDK/业务边界。

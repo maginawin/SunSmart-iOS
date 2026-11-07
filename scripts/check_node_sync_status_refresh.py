@@ -50,10 +50,17 @@ def production():
         source = read(f'SunSmart/Main/Timed/View/Schedule{kind}View.swift')
         observer = re.search(r'        (observe\w+Changes)\(\)', source).group(1)
         cleanup = section(source, '    deinit {', '\n    }') + '\n    }'
+        device_selection = '''
+    let nodes = MeshNetworkManager.instance.realNodes
+    var disableUnselectNodes: [Node] = []
+    func updateSelectAllState() {}
+''' if kind == 'Devices' else ''
         picker_probes.append(f'''
 private final class Schedule{kind}ForegroundProbe: PickerForegroundProbe {{
     let schedule: Schedule?
     let scenes: [Scene] = MeshNetworkManager.instance.scenes
+    private let collectionView = PickerCollectionView()
+    {device_selection}
     var superview: NSObject?
     var attached: Bool {{
         get {{ superview != nil }}

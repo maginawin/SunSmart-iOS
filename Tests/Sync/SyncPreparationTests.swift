@@ -28,8 +28,8 @@ final class UIBarButtonItem { var title: String?, isEnabled = true; func without
 final class NavigationItem { var rightBarButtonItem: UIBarButtonItem? = UIBarButtonItem() }
 struct UIImage { init?(named: String) {} }
 enum XWHUDManager {
-    static var messages: [String] = [], visible = false
-    static func showCustomHUD(withMessage: String?, view: View) { visible = true }
+    static var messages: [String] = [], visible = false, shows = 0
+    static func showCustomHUD(withMessage: String?, view: View) { visible = true; shows += 1 }
     static func hideInView(with view: View) { visible = false }
     static func showErrorTipHUD(_ message: String) { messages.append(message) }
 }
@@ -69,8 +69,18 @@ struct SceneConfigurationStore {
 }
 enum HDBDeviceSyncContext { static func resolve(node: Node) throws -> Int { throw NetworkApiError.configurationUnavailable } }
 enum HDBDeviceSyncService { static func prepareIntents(nodes: [Node]) {} }
-enum SpaceSyncTaskScope { static func capture() -> () -> Bool { { true } } }
-final class Environment { var configurationIsCurrent: () -> Bool = { true } }
+final class SceneSyncProgress {}
+enum SpaceSyncTaskScope {
+    static func capture(sceneProgress: SceneSyncProgress? = nil) -> () -> Bool { { true } }
+    static func expectSceneProgress(_ handles: [Int], in progress: SceneSyncProgress) {}
+}
+final class Environment {
+    var configurationIsCurrent: () -> Bool = { true }
+    var configurationWillSend: ([Int]) -> Void = { _ in }
+    var delayed: [() -> Void] = []
+    func delay(_ interval: TimeInterval, _ action: @escaping () -> Void) { delayed.append(action) }
+    func elapse() { let actions = delayed; delayed = []; actions.forEach { $0() } }
+}
 final class Session { var type = SyncType.profile; let environment = Environment(); var stops = 0; func stop() { stops += 1 } }
 final class Display { func invalidateRun() {} }
 struct Plan { var sections = [Section(devices: [SyncDevicesModel()])]; var initialState: SyncState }
@@ -98,6 +108,7 @@ final class GatewaySyncContext {
 
     var hasLeftSyncPage = false, isPreparingTaskPlan = false, needsTaskPreparation = true
     var preparationID = UUID(), preparationTask: Task<Void, Never>?
+    var preparationHUDVisible = false
     let preparationScopeIsCurrent = { SpaceSyncAccess.scopeCurrent }
     var syncState = SyncState.inSync, type = SyncType.devices([Node()])
     let view = View(), tableView = Table(), bottomView = View(), backBtn = Button(), selectAllBtn = Button(), progressLabel = Label()
@@ -112,7 +123,7 @@ final class GatewaySyncContext {
     // check_sync_run_lifecycle.py, including closed-page and STOP boundaries.
     func installTaskPlan(_ result: Plan) {
         installs += 1; sections = result.sections; isPreparingTaskPlan = false; needsTaskPreparation = false
-        syncState = result.initialState; XWHUDManager.hideInView(with: view)
+        syncState = result.initialState; hidePreparationHUD()
         if syncState == .inSync { startSync() }; updateSyncStateUI()
     }
     func selectedFailedDevicesForResync() -> [SyncDevicesModel] { sections.flatMap(\.devices).filter { $0.state == .failed && $0.isSelected } }
@@ -130,7 +141,7 @@ final class GatewaySyncContext {
         SceneRestoreConfirmation.result = .ready; SceneRestoreConfirmation.hold = false; SceneRestoreConfirmation.pending = nil
         SceneConfigurationStore.failure = nil; SceneConfigurationStore.calls = 0
         GroupMemberPersistence.succeeds = true
-        SyncTaskPlanBuilder.calls = 0; XWHUDManager.messages = []; XWHUDManager.visible = false
+        SyncTaskPlanBuilder.calls = 0; XWHUDManager.messages = []; XWHUDManager.visible = false; XWHUDManager.shows = 0
     }
     @MainActor static func waitForCleanup() async {
         for _ in 0..<1000 { if SpaceSyncCleanupCoordinator.pending != nil { return }; await Task.yield() }
@@ -149,7 +160,9 @@ final class GatewaySyncContext {
         for type in [SyncType.devices([Node()]), .group(Group()), .scene(Scene()), .profile, .schedule] {
             reset(); let page = Page(); page.type = type
             page.rebuildTaskPlan(resume: true); await page.preparationTask?.value
+            page.executionSession.environment.elapse()
             precondition(page.installs == 1 && page.starts == 1 && XWHUDManager.messages.isEmpty)
+            guard XWHUDManager.shows == 0 else { print("FAIL fast preparation flashes the loading HUD"); exit(1) }
         }
         for type in [SyncType.gatewayRecovery, .gatewayServerRecovery, .devices([Node()])] {
             reset(); let page = Page(); page.type = type; page.gatewayContext = GatewaySyncContext()
@@ -224,11 +237,48 @@ final class GatewaySyncContext {
             precondition(XWHUDManager.messages == ((mode == "stop" || mode == "leave") ? [] : ["configurationUnavailable"]))
         }
         reset(); let oldAlert = Page(); SceneRestoreConfirmation.hold = true
-        oldAlert.rebuildTaskPlan(resume: true); oldAlert.rightItemAction(); SceneRestoreConfirmation.pending?()
+        oldAlert.rebuildTaskPlan(resume: true); oldAlert.executionSession.environment.elapse()
+        precondition(!XWHUDManager.visible && XWHUDManager.shows == 0, "restore confirmation has no loading overlay")
+        oldAlert.rightItemAction(); SceneRestoreConfirmation.pending?()
         precondition(oldAlert.installs == 0 && SpaceSyncCleanupCoordinator.calls == 0 && XWHUDManager.messages.isEmpty)
         reset(); let stoppedPlan = Page()
         stoppedPlan.rebuildTaskPlan(resume: false); await stoppedPlan.preparationTask?.value
         precondition(stoppedPlan.installs == 1 && stoppedPlan.starts == 0 && stoppedPlan.syncState == .syncFailure)
+        for mode in ["complete", "failed", "stop", "leave", "replace"] {
+            reset(); let page = Page(); SpaceSyncCleanupCoordinator.hold = true
+            page.rebuildTaskPlan(resume: true); let oldTask = page.preparationTask
+            await waitForCleanup()
+            precondition(!XWHUDManager.visible)
+            page.executionSession.environment.elapse()
+            precondition(XWHUDManager.visible && XWHUDManager.shows == 1, "slow preparation shows exactly one HUD")
+            switch mode {
+            case "failed": SpaceSyncCleanupCoordinator.failure = .configurationUnavailable
+            case "stop": page.rightItemAction()
+            case "leave": page.hasLeftSyncPage = true; page.cancelTaskPreparation()
+            case "replace":
+                let oldCompletion = SpaceSyncCleanupCoordinator.pending
+                SpaceSyncCleanupCoordinator.pending = nil
+                page.rebuildTaskPlan(resume: true)
+                await waitForCleanup()
+                page.executionSession.environment.elapse()
+                precondition(XWHUDManager.visible && XWHUDManager.shows == 2)
+                oldCompletion?.resume(returning: nil); await oldTask?.value
+                precondition(XWHUDManager.visible && page.installs == 0, "late old completion must not hide the new HUD or install a plan")
+            default: break
+            }
+            SpaceSyncCleanupCoordinator.release(); await page.preparationTask?.value; await oldTask?.value
+            page.executionSession.environment.elapse()
+            precondition(!XWHUDManager.visible)
+        }
+        reset(); let delayedOld = Page(); SceneRestoreConfirmation.hold = true
+        // A queued loading callback from an earlier preparation cannot show on a later alert.
+        SceneRestoreConfirmation.hold = false; SpaceSyncCleanupCoordinator.hold = true
+        delayedOld.rebuildTaskPlan(resume: true); let delayedTask = delayedOld.preparationTask
+        await waitForCleanup()
+        SceneRestoreConfirmation.hold = true; delayedOld.rebuildTaskPlan(resume: true)
+        delayedOld.executionSession.environment.elapse()
+        precondition(!XWHUDManager.visible && XWHUDManager.shows == 0)
+        SpaceSyncCleanupCoordinator.release(); await delayedTask?.value
         print("PASS production sync page: generic types, one error, cancelled Restore, preparation retry, installed-row retry, STOP/leave/Space/generation late results")
     }
 }

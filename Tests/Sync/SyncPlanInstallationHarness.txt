@@ -9,5 +9,6 @@
     func startSync() { starts += 1 }
     func updateSyncStateUI() { stateUpdates += 1 }
     var isPreparingTaskPlan = true
+    var preparationHUDVisible = true
     var gatewayContext: Int? = nil
     var needsTaskPreparation = true

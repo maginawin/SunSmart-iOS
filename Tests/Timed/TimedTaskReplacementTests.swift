@@ -2,6 +2,7 @@ import Foundation
 
 typealias Address = UInt16
 protocol MeshMessage {}
+struct TimeSet: MeshMessage {}
 struct SchedulerRegistryEntry {
     let enabled: Bool
     static func marshal(index: UInt8, entry: Self) -> Data { Data([index, entry.enabled ? 1 : 0]) }
@@ -32,18 +33,24 @@ final class Node {
     var timedSchedulerIdentity: TimedSchedulerNodeIdentity?
     let normal: Model, extra: Model, collection: Model
     var collectionSchedulerSetupModel: Model? { collection }
-    var timeModel: Model? { nil }
+    var timeModel: Model? = nil
     var observedTimedSlots: Set<Int>? = []
     var appliedEnabled = false
-    @discardableResult func savePropertys() -> Bool { true }
+    var propertiesSaveSucceeds = true
+    var appliedCount = 0
+    @discardableResult func savePropertys() -> Bool { propertiesSaveSucceeds }
+    func clearSyncStateCache() {}
     init(_ address: Address) {
         primaryUnicastAddress = address
         normal = Model(address); extra = Model(address + 1); collection = Model(address + 2)
         timedSchedulerIdentity = .init(nodeUUID: UUID().uuidString, unicastAddress: String(format: "%04X", address), deviceKeyFingerprint: String(repeating: "a", count: 64))
     }
-    func applyMessageHandle(_ handle: MeshMessageHandle) {
-        guard handle.schedulerTask?.isCancelled != true else { return }
+    @discardableResult
+    func applyMessageHandle(_ handle: MeshMessageHandle, finalizeSchedulerBinding: Bool = true) -> Bool {
+        guard handle.schedulerTask?.isCancelled != true else { return false }
+        appliedCount += 1
         if let message = handle.message as? SchedulerActionSet { appliedEnabled = message.entry.enabled }
+        return true
     }
 }
 final class MeshMessageHandle {
@@ -52,7 +59,9 @@ final class MeshMessageHandle {
     var schedulerTask: MeshSchedulerTask?, schedulerAdmission: (() -> Void)?
     var transmissionIsValid: (() -> Bool)?, responseIsValid: ((MeshMessage) -> Bool)?
     var continuous = true, successful = false
-    var isSuccessful: Bool { successful && schedulerTask?.isCancelled != true }
+    var allAddresss: [Address] { [model!.parentElement!.unicastAddress] }
+    var respondAddresss: [Address] { successful ? allAddresss : [] }
+    // PRODUCTION_SUCCESS
     init(message: MeshMessage, model: Model) { self.message = message; self.model = model }
 }
 final class Schedule: Encodable {
@@ -68,17 +77,19 @@ final class Schedule: Encodable {
     var nodes: [Node] { MeshNetworkManager.instance.realNodes.filter { nodeAddresses.contains($0.primaryUnicastAddress) } }
     var enabled = false, name = "Test"
     var nodeSlots: [TimedSchedulerNodeSlot]?
+    var nodeSlotsLoadFailed = false
     var nodeAddresses: [Address]
     var needDeleteNodeAddresses: [Address] = []
     var selectTargetType = Target.devices
     var saves = 0, saveSucceeds = true
-    func reconcileBinding(on node: Node) {
-        guard let index = nodeSlots?.firstIndex(where: { $0.identity == node.timedSchedulerIdentity }),
-              nodeSlots![index].state != .pendingRemoval else { return }
+    @discardableResult func reconcileBinding(on node: Node) -> Bool {
+        guard let index = nodeSlots?.firstIndex(where: { $0.identity == node.timedSchedulerIdentity }) else { return true }
+        if nodeSlots![index].state == .pendingRemoval { return releaseClearedBinding(on: node) }
         nodeSlots![index].state = needsSync(on: node) ? .pendingApply : .synced
-        save()
+        return save()
     }
     // PRODUCTION_RELEASE
+    // PRODUCTION_RESULTS
     enum CodingKeys: CodingKey { case id, enabled, name, nodeSlots, nodeAddresses, needDeleteNodeAddresses, selectTargetType, action }
     init(id: Int = 1, nodes: [Node]) {
         self.id = id; nodeAddresses = nodes.map(\.primaryUnicastAddress)
@@ -99,7 +110,7 @@ final class Schedule: Encodable {
     func targets(node: Node) -> Bool { nodeAddresses.contains(node.primaryUnicastAddress) }
     func slot(on node: Node) -> Int? { nodeSlots?.first { $0.identity == node.timedSchedulerIdentity }?.slot }
     func needsSync(on node: Node, contextGroup: Group? = nil) -> Bool { node.appliedEnabled != enabled }
-    func deletionIsSynchronized(on node: Node) -> Bool { !node.appliedEnabled }
+    // PRODUCTION_DELETION
     @discardableResult func save(meshUUID: String? = nil, meshNetworkId: String? = nil) -> Bool {
         saves += 1
         guard saveSucceeds else { return false }
@@ -116,13 +127,16 @@ final class Schedule: Encodable {
     }
 }
 enum TimedSchedulerBindings {
+    // SQLite/revision behavior is covered by TimedSlotPersistenceTests.
+    enum Failure: Error { case persistence }
+    static func withLocalChange(_ changes: () throws -> Void) throws { try changes() }
     static func prepare(schedules: [Schedule]) -> [Schedule] { schedules }
-    static func commit(_ schedules: [Schedule]) throws { schedules.forEach { _ = $0.save() } }
+    static func commit(_ schedules: [Schedule], markCloudChange: Bool = false) throws { schedules.forEach { _ = $0.save() } }
     static func reserveForDeletion(schedule: Schedule, node: Node? = nil) -> Bool { true }
     static func reserveForSending(schedule: Schedule, node: Node, contextGroup: Group?) -> Bool { true }
 }
 enum SiteTimeSetMessageFactory {
-    static func makeHandle(node: Node, model: Model) -> MeshMessageHandle? { nil }
+    static func makeHandle(node: Node, model: Model) -> MeshMessageHandle? { MeshMessageHandle(message: TimeSet(), model: model) }
 }
 final class MeshProxyMessageCommand {
     static let shared = MeshProxyMessageCommand()
@@ -206,15 +220,18 @@ struct ScheduleServer {
             } else {
                 // Proxy is already reset before the synchronization result applies
                 // this production release method and then checks isSuccessful.
-                schedule.releaseClearedBinding(on: node)
-                precondition([first, second].allSatisfy { $0.isSuccessful }, "normal cleanup must preserve successful receipts: \(outcome)")
-                precondition(schedule.nodeSlots!.isEmpty == (outcome == "success"))
+                let before = node.appliedCount
+                let applied = schedule.applySchedulerResults([first, second], expected: [first, second], on: node)
+                precondition(applied == (outcome == "success"), "normal cleanup batch must complete despite its released send intent: \(outcome)")
+                precondition(node.appliedCount == before + 2, "every Model must apply before releasing the shared binding")
+                precondition(schedule.nodeSlots!.isEmpty == (outcome == "success"), "binding release: \(outcome)")
                 if outcome == "failedSave" {
                     schedule.saveSucceeds = true
-                    schedule.releaseClearedBinding(on: node)
-                    precondition(schedule.nodeSlots!.isEmpty && first.isSuccessful, "failed save can retry without cancelling its receipt")
+                    precondition(schedule.applySchedulerResults([first, second], expected: [first, second], on: node))
+                    precondition(schedule.nodeSlots!.isEmpty && !first.schedulerTask!.isCancelled, "failed save can retry without cancelling its receipt")
                 }
                 if outcome == "success" {
+                    precondition(!first.isSuccessful, "the SDK getter remains dynamic; the batch owns the accepted result")
                     precondition(first.transmissionIsValid?() == false, "released work cannot be transmitted again")
                     schedule.nodeSlots = [.init(identity: node.timedSchedulerIdentity!, slot: 0, state: .assigned)]
                     schedule.nodeAddresses = [node.primaryUnicastAddress]
@@ -225,9 +242,30 @@ struct ScheduleServer {
         }
         queue.isBusy = false
         TimedSchedulerTaskCoordinator.invalidateAll()
-        print("PASS: production binding release preserves multi-Model receipts; failed save/retry, unknown/partial state, busy and replacement remain protected")
+        print("PASS: production result batch accepts multi-Model clearing with the real SDK success getter; failed save/retry, unknown/partial state, busy and replacement remain protected")
+    }
+    static func testTimeSetOwnership() {
+        let manager = MeshNetworkManager.instance, queue = MeshProxyMessageCommand.shared
+        for cancel in [false, true] {
+            queue.batches.removeAll()
+            let node = Node(0x49F9); node.timeModel = node.normal
+            manager.realNodes = [node]
+            let schedule = Schedule(nodes: [node]); schedule.enabled = true
+            manager.schedules = [schedule]
+            ScheduleServer.saveSchedule(schedule: schedule, setNodes: [node], success: nil, failed: nil)
+            let clock = queue.batches[0].handles.first { $0.message is TimeSet }!
+            precondition(clock.transmissionIsValid?() ?? true)
+            if cancel { TimedSchedulerTaskCoordinator.invalidateAll() }
+            else { _ = TimedSchedulerTaskCoordinator.begin(schedule: schedule) }
+            guard clock.transmissionIsValid?() == false else {
+                fputs("FAIL: ScheduleServer TimeSet must reject cancelled/replaced operation\n", stderr); exit(1)
+            }
+        }
+        TimedSchedulerTaskCoordinator.invalidateAll(); queue.batches.removeAll()
+        print("PASS: production ScheduleServer TimeSet follows cancellation/replacement ownership")
     }
     static func main() {
+        testTimeSetOwnership()
         let manager = MeshNetworkManager.instance, queue = MeshProxyMessageCommand.shared
         let a = Node(1), b = Node(5)
         manager.realNodes = [a, b]

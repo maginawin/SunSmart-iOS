@@ -98,6 +98,29 @@ extension NetworkRequest {
             UserData.currentUserId = "test-account"
         }
         let legacy = SpaceData("ordinary-legacy")
+        for batch in [false, true] {
+            let space = SpaceData("failed-device-add-\(batch)")
+            space.lastUpdate = 40; ProximityLightingImportPreflight.storedSpace = space
+            let baseline = S.prepareSubmission(space, payload: space.payload)!
+            precondition(S.markSubmissionAccepted(baseline, space: space) && S.finishAcceptedSubmission(baseline, space: space))
+            space.nodes = try [SpaceRecoveryReceiptTests.membershipNode(1), SpaceRecoveryReceiptTests.membershipNode(2)]
+            space.lastUpdate = 50
+            request.result = .failure(.init(code: 9999, message: "unknown error", httpStatusCode: 500,
+                responseBody: "{\"code\":\"9999\",\"message\":\"unknown error\"}"))
+            let operation: SyncOperation = batch ? .syncSite(site: SiteData(), syncSpaces: [space]) : .syncSpace(space: space)
+            let flow = UploadFlowHarness(operation); flow.start()
+            await flow.configurationUploadTask?.value
+            guard case .failure = flow.state else { preconditionFailure("fixture POST must fail") }
+            let receipt = try S.recoveryState(space)
+            precondition(receipt.submission?.phase == .prepared)
+            var remote = space.payload; remote["nodes"] = [[String: Any]](); remote["deviceCount"] = 2
+            let outcome = await space.update(spaceJsonData: remote)
+            precondition(outcome == .preserved("unconfirmedLocalNodes"))
+            precondition(space.nodes.count == 2 && space.needUploadCloud && space.lastUploadCloudTimestamp == 40)
+            precondition(try! S.recoveryState(space) == receipt)
+        }
+        ProximityLightingImportPreflight.storedSpace = nil
+        print("PASS: production Space/Site upload 500 followed by equal empty detail preserves both added nodes and the original durable receipt")
         legacy.lastUploadCloudTimestamp = 40
         let legacyCalls = request.calls
         let legacyPrepared = await S.prepareUpload(legacy, payload: legacy.payload)

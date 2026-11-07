@@ -2,6 +2,8 @@ import Foundation
 
 @main struct SceneCommandTests {
     static func main() throws {
+        try plannedGroupSceneSafetyCase()
+        try groupSyncProgressCase()
         try productionIdentityCase()
         let node = Node(1)
         node.lightnessModel = nil; node.effectiveSupportCct = false
@@ -143,6 +145,121 @@ import Foundation
         scene.info.configuration!.pendingOperations = []
         precondition(!scene.needSync, "genuinely empty scene may complete")
         print("PASS sync: command, ownership, persistence and production task dependencies")
+    }
+
+    static func plannedGroupSceneSafetyCase() throws {
+        let manager = MeshNetworkManager.instance
+        let node = Node(10), group = Group(0xC015), otherGroup = Group(0xC016), scene = Scene(18)
+        manager.realNodes = [node]; manager.groups = [group, otherGroup]; manager.scenes = [scene]; manager.schedules = []
+        group.info.sceneExecuteDatas = [.init(sceneNumber: 18)]
+        otherGroup.info.sceneExecuteDatas = [.init(sceneNumber: 18)]
+        precondition(node.getNodeSyncSceneDatas(group: group).isEmpty, "a group argument alone does not authorize a pending member")
+        node.restoreData = .init(addGroupAddress: 0xC015)
+        let onOff = node.onoffModel
+        node.onoffModel = nil
+        guard node.getNodeSyncSceneDatas(group: group).isEmpty else { print("FAIL unsupported joining member gets a Scene write"); exit(1) }
+        node.onoffModel = onOff
+        node.group = otherGroup
+        precondition(node.getNodeSyncSceneDatas(group: group).isEmpty, "another group's member is not an implicit join")
+        node.group = nil
+        scene.info.configuration = .init(kind: .groups, name: "Deleting", isDeleting: true)
+        precondition(node.getNodeSyncSceneDatas(group: group).isEmpty, "joining must never revive a deleting Scene")
+    }
+
+    static func groupSyncProgressCase() throws {
+        let manager = MeshNetworkManager.instance
+        let nodes = [Node(0x49F9), Node(0x49FC)], group = Group(0xC015), scene = Scene(18)
+        manager.realNodes = nodes; manager.groups = [group]; manager.scenes = [scene]; manager.schedules = []
+        group.info.sceneExecuteDatas = [.init(sceneNumber: 18, lightness: 20000, cct: 4000)]
+        nodes.forEach { $0.restoreData = .init(addGroupAddress: 0xC015) }
+        let progress = SceneSyncProgress()
+        let current = SceneCommandBuilder.captureConfigurations(progress: progress)
+        let strict = SceneCommandBuilder.captureConfigurations()
+        let transport = SceneProgressTransport()
+        transport.configurationWillSend = { SpaceSyncTaskScope.expectSceneProgress($0, in: progress) }
+        var receipts = 0
+        func send(_ node: Node, message: Any, applying: @escaping () -> Void) {
+            let oldReceipts = receipts
+            transport.send = { handles, _, success, _, finished in
+                DispatchQueue.main.async {
+                    applying()
+                    success?(handles[0], 0)
+                    finished?(handles)
+                }
+            }
+            transport.addMessage(messageHandles: [.init(message: message, address: node.primaryUnicastAddress)],
+                                 successfulBack: { _, _ in
+                guard current() else { print("FAIL own successful receipt invalidates the sync plan"); exit(1) }
+                receipts += 1
+            }, finishedBack: { _ in precondition(current()) })
+            let deadline = Date().addingTimeInterval(2)
+            while receipts == oldReceipts && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.001)) }
+            precondition(receipts == oldReceipts + 1, "asynchronous callback must be delivered")
+        }
+        precondition(current())
+        nodes[1].restoreData?.addGroupAddress = 0xC016
+        guard !current() else { print("FAIL changed pending membership accepted before that node starts"); exit(1) }
+        nodes[1].restoreData?.addGroupAddress = 0xC015
+        nodes[1].group = group
+        precondition(!current(), "a member change without a submitted command must invalidate")
+        nodes[1].group = nil
+        for node in nodes {
+            let tasks = node.getNodeSyncSceneDatas(group: group)
+            precondition(tasks.count == 1 && tasks[0].scene === scene,
+                         "first plan must include the joining member's Scene before subscription")
+            precondition(scene.getSyncMessageHandles(node: node, data: tasks[0].data).isEmpty,
+                         "planning a future member must not authorize an early Scene send")
+            send(node, message: ConfigModelSubscriptionAdd(address: 0xC015)) {
+                node.group = group
+                node.restoreData?.addGroupAddress = nil
+            }
+            guard current() else { print("FAIL own successful group subscription invalidates the sync plan"); exit(1) }
+            precondition(!strict(), "other Scene callers retain strict topology ownership")
+            send(node, message: LightLightnessRangeSet(range: 655...65535)) { node.lightnessRange = 655...65535 }
+            guard current() else { print("FAIL own successful range write invalidates the sync plan"); exit(1) }
+            let handles = scene.getSyncMessageHandles(node: node, data: tasks[0].data)
+            precondition(handles.count == 2 && handles.last?.message is SceneStore,
+                         "Scene executes after the member joins without rebuilding")
+            precondition(handles.last!.sceneContext!.matches(node: node))
+            precondition(handles.last!.sceneContext!.apply(node: node, successful: true))
+            precondition(current(), "Scene receipt progress keeps the same plan")
+        }
+        precondition(nodes.allSatisfy { $0.getNodeSyncSceneDatas(group: group).isEmpty },
+                     "successful Scene writes are not rebuilt on retry")
+        precondition(receipts == 4)
+        let node = nodes[0]
+        node.lightnessRange = 656...65535
+        precondition(!current(), "a range response differing from the submitted value must invalidate")
+        node.lightnessRange = 655...65535
+        node.lightnessRange = 0...65535
+        precondition(!current(), "completed range must not regress to the old value")
+        node.lightnessRange = 655...65535
+        node.effectiveCctRange = 3000...6000
+        precondition(!current(), "unplanned capability change stays protected")
+        node.effectiveCctRange = 2700...6500
+        node.fingerprint = String(repeating: "B", count: 64)
+        precondition(!current(), "same address with a new identity stays protected")
+        node.fingerprint = String(repeating: "A", count: 64)
+        node.group = nil
+        precondition(!current(), "unplanned membership removal stays protected")
+        node.group = group
+        group.info.sceneExecuteDatas[0].lightness = 30000
+        precondition(!current(), "real desired Scene edits must still invalidate")
+        group.info.sceneExecuteDatas[0].lightness = 20000
+        precondition(current())
+
+        nodes.forEach { $0.groupState = .exitFailure }
+        let exitingProgress = SceneSyncProgress()
+        let exiting = SceneCommandBuilder.captureConfigurations(progress: exitingProgress)
+        for node in nodes {
+            precondition(node.getNodeSyncSceneDatas(group: group).isEmpty)
+            exitingProgress.expect(node: node, change: .subscription(group, adding: false))
+            node.group = nil
+            precondition(exiting())
+            node.groupState = .normal
+            precondition(exiting(), "final unsubscribe completes exit intent")
+        }
+        print("PASS two-member Scene plan: expected progress, initial tasks, strict external edits and exit completion")
     }
 
     static func productionIdentityCase() throws {

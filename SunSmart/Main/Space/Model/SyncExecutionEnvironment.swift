@@ -5,6 +5,7 @@ import NordicSigMeshSDK
 final class SyncExecutionEnvironment {
     var hasPendingCloudChanges: () -> Bool = { SpaceViewController.currentSpace()?.needUploadCloud == true }
     var configurationIsCurrent: () -> Bool = { true }
+    var configurationWillSend: ([MeshMessageHandle]) -> Void = { _ in }
     var configurationAvailable: () -> Bool = { SpaceConfigurationSafety.currentConfigurationAvailable }
     var bluetoothAvailable: () -> Bool = { MeshLibManager.manager.isOpenBluetooth }
     var delay: (TimeInterval, @escaping () -> Void) -> Void = { interval, action in
@@ -50,6 +51,7 @@ final class SyncExecutionEnvironment {
                     failedBack: MessageCommandFailedCallback? = nil,
                     finishedBack: MessageCommandFinishedCallback?) {
         precondition(Thread.isMainThread)
+        configurationWillSend(messageHandles)
         send(messageHandles, ackMessageTimeout, successfulBack, failedBack, finishedBack)
     }
 }

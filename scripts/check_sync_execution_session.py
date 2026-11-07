@@ -31,6 +31,10 @@ extension HDBDeviceSyncTask {
     var testHandles: [MeshMessageHandle] = []
     var state = true
     var updates = 0
+    var schedulerReconciliations = 0
+    var releaseInvalidatesReceipts = false
+    var schedulerSaveSucceeds = true
+    func savePropertys() -> Bool { schedulerSaveSucceeds }
     var applied = false
     func updateData(message: Int, isSuccess: Bool, model: Int?) { updates += 1; applied = isSuccess }
     func clearSyncStateCache() {}
@@ -38,6 +42,7 @@ extension HDBDeviceSyncTask {
     func sendHandleCompleteIdentify(deviceBlinkMode: DeviceBlinkMode) {}
 ''')
     fixtures = fixtures.replace('final class MeshMessageHandle {', '''final class MeshMessageHandle {
+    var transmissionIsValid: (() -> Bool)?
     var schedulerTask: MeshSchedulerTask?
     var sceneContext: SceneMessageContext?
     var address: Address? = 1
@@ -60,7 +65,7 @@ extension Node {
 enum SceneAcknowledgementProbe { static var accepted = 0 }
 extension MeshNetworkManager { var realNodes: [Node] { meshNetwork?.nodes ?? [] } }
 '''
-    source = 'import Foundation\nstruct SceneDelete {}\nstruct SceneStore { let scene: UInt16; init(_ scene: UInt16) { self.scene = scene } }\n' + fixtures
+    source = 'import Foundation\nstruct TimeSet {}\nstruct SceneDelete {}\nstruct SceneStore { let scene: UInt16; init(_ scene: UInt16) { self.scene = scene } }\n' + fixtures
     node = (ROOT / 'SunSmart/Common/Data/Node+SyncData.swift').read_text()
     source += region(node, 'enum NodeSyncData {', 'extension Group {')
     source += region(model, 'enum SyncDevicesState', 'struct SunricherVendorSetUnacknowledged')
@@ -73,6 +78,8 @@ extension MeshNetworkManager { var realNodes: [Node] { meshNetwork?.nodes ?? [] 
     for name in ['SyncExecutionSession', 'SyncExecutionSession+Tasks', 'SyncExecutionSession+Result', 'SyncRetryPolicy']:
         source += (ROOT / f'SunSmart/Main/Space/Model/{name}.swift').read_text().replace('import NordicSigMeshSDK', '')
     from check_scene_configuration import function
+    bindings = (ROOT / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text()
+    source = source.replace('// ACTUAL_SCHEDULER_RESULTS', function(bindings, '    func applySchedulerResults(') + '\n' + function(bindings, '    private func schedulerResultFailure('))
     identity_source = (ROOT / 'SunSmart/Main/Scene/Model/SceneTargetResolver.swift').read_text()
     source += '\nextension Node {\n' + function(identity_source, '    var sceneConfigurationIdentity:') + '\n}\n'
     coordinator_source = (ROOT / 'SunSmart/Main/Scene/Model/SceneSaveCoordinator.swift').read_text()
@@ -123,7 +130,8 @@ final class RestoreSceneBoundary {
     source += builder[builder.index('struct SyncTaskPlanResult {'):]
     source += '\nfinal class SessionPlanInstallationHarness {\n'
     source += (ROOT / 'Tests/Sync/SyncSessionPlanInstallationHarness.txt').read_text()
-    source += region(controller, '    private func installTaskPlan(', '    override func viewDidAppear(').replace('private func', 'func', 1) + '\n}\n'
+    source += region(controller, '    private func installTaskPlan(', '    override func viewDidAppear(').replace('private func', 'func', 1)
+    source += '\n' + function(controller, '    private func hidePreparationHUD(').replace('private func', 'func', 1) + '\n}\n'
     restore_fixture = (ROOT / 'Tests/Sync/RestorePowerUpFixture.swift').read_text()
     factory = (ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text()
     restore_fixture = restore_fixture.replace('// POWER_UP_FACTORY', region(factory,

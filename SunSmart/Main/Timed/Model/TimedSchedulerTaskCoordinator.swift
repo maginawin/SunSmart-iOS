@@ -116,11 +116,20 @@ enum TimedSchedulerTaskCoordinator {
                 handle.schedulerAdmission = {
                     guard !admitted else { return }
                     admitted = true
-                    guard valid() else { task.cancel(); return }
+                    guard valid() else {
+                        #if DEBUG
+                        traceCancellation(task, resource: resource, reason: "admissionInvalid")
+                        #endif
+                        task.cancel()
+                        return
+                    }
                     lock.lock()
                     let previous = current.updateValue(Current(task: task, scheduleID: schedule?.id, intent: desired, binding: binding), forKey: resource)
                     lock.unlock()
                     if let previous, previous.task !== task {
+                        #if DEBUG
+                        traceCancellation(previous.task, resource: resource, reason: "replacement")
+                        #endif
                         MeshProxyMessageCommand.shared.cancelSchedulerTasks([previous.task])
                     }
                 }
@@ -136,7 +145,7 @@ enum TimedSchedulerTaskCoordinator {
             operations.removeValue(forKey: operationKey)
         }
         lock.unlock()
-        invalidate { resource, value in
+        invalidate(reason: "configurationSaved") { resource, value in
             guard resource.meshUUID == meshUUID && resource.networkID == networkID,
                   value.scheduleID == schedule.id else { return false }
             guard let node = MeshNetworkManager.instance.realNodes.first(where: { $0.timedSchedulerIdentity == resource.identity }) else { return true }
@@ -162,17 +171,26 @@ enum TimedSchedulerTaskCoordinator {
         operations.values.forEach { $0.cancelled = true }
         operations.removeAll()
         lock.unlock()
-        invalidate { _, _ in true }
+        invalidate(reason: "lifecycle") { _, _ in true }
     }
 
     static func invalidate(node: Node) {
         guard let identity = node.timedSchedulerIdentity else { return }
-        invalidate { resource, _ in resource.identity == identity && resource.meshUUID == node.network?.uuid.uuidString }
+        invalidate(reason: "nodeInvalidated") { resource, _ in resource.identity == identity && resource.meshUUID == node.network?.uuid.uuidString }
     }
 
-    private static func invalidate(_ matches: (Resource, Current) -> Bool) {
+    #if DEBUG
+    private static func traceCancellation(_ task: MeshSchedulerTask, resource: Resource, reason: String) {
+        print("[ScheduleTask] task=\(ObjectIdentifier(task)) node=\(resource.identity.unicastAddress) slot=\(resource.slot) reason=\(reason)")
+    }
+    #endif
+
+    private static func invalidate(reason: String, _ matches: (Resource, Current) -> Bool) {
         lock.lock()
         let keys = current.keys.filter { matches($0, current[$0]!) }
+        #if DEBUG
+        keys.forEach { traceCancellation(current[$0]!.task, resource: $0, reason: reason) }
+        #endif
         let tasks = keys.compactMap { current.removeValue(forKey: $0)?.task }
         tasks.forEach { $0.cancel() }
         lock.unlock()

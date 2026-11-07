@@ -155,10 +155,20 @@ class TimedViewController: UIViewController {
         guard let display = syncDisplay, display.isCurrentScope else { return }
         guard schedule.existNodes.count > 0 else {
             guard let operation = display.beginOperation() else { return }
+            let previous = schedule.enabled
             schedule.enabled = enabled
-            schedule.save()
+            do {
+                try TimedSchedulerBindings.withLocalChange {
+                    guard schedule.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                }
+            } catch {
+                schedule.enabled = previous
+                finishScheduleOperation(operation, display: display, schedule: schedule)
+                TimedSchedulerBindings.showFailure(error)
+                return
+            }
             finishScheduleOperation(operation, display: display, schedule: schedule)
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.syncResult(changed: false))
             return
         }
         guard MeshLibManager.manager.isMeshNetworkConnected else {

@@ -108,6 +108,7 @@ test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 test += '\n' + read('Tests/Group/NewerCloudImportTests.swift')
+test += '\n' + read('Tests/Group/UnconfirmedNodeImportTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
 test += '\n' + read('Tests/Group/NewerLocalConfigurationTests.swift')
 test += '\n' + read('Tests/Group/SpaceSyncConflictTests.swift')

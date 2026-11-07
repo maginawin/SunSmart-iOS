@@ -62,6 +62,31 @@ private final class Harness {
 
 @main
 enum SyncExecutionSessionTests {
+    static func timeSetFollowUpOwnership() {
+        for action in ["stop", "close", "complete", "invalidConfiguration"] {
+            let h = Harness()
+            let (session, _, _, node) = h.make()
+            let handle = node.testHandles[0]
+            handle.message = TimeSet()
+            var sourceCurrent = true
+            handle.transmissionIsValid = { sourceCurrent }
+            session.start(); h.flush()
+            precondition(handle.transmissionIsValid?() == true)
+            sourceCurrent = false
+            precondition(handle.transmissionIsValid?() == false, "Original Site/identity guard must be preserved")
+            sourceCurrent = true
+            if action == "stop" { session.stop() }
+            if action == "close" { session.close() }
+            if action == "complete" { h.finish(0); h.flush() }
+            if action == "invalidConfiguration" { h.environment.configurationIsCurrent = { false } }
+            guard handle.transmissionIsValid?() == (action == "complete") else {
+                fputs("FAIL: TimeSet follow-up must respect Sync operation lifecycle\n", stderr); exit(1)
+            }
+            h.stopFinished?(); h.flush()
+            session.close(); h.stopFinished?(); h.flush()
+        }
+    }
+
     static func unresolvedSceneCannotFinishSuccessfully() {
         for pending in [true, false] {
             let h = Harness()
@@ -80,8 +105,10 @@ enum SyncExecutionSessionTests {
 
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        timeSetFollowUpOwnership()
         restorePowerUpRetry()
         schedulerResultOwnership()
+        schedulerCleanupResult()
         sceneReadFollowUpBatches()
         sceneCleanupTaskResultBoundaries()
         sceneCleanupActivationIsolation()
@@ -137,6 +164,27 @@ enum SyncExecutionSessionTests {
             precondition(node.updates == (cancelled ? 0 : 1), "obsolete Scheduler results must not write back")
         }
         print("PASS: production Session accepts current Scheduler success and rejects cancelled writeback")
+    }
+
+    static func schedulerCleanupResult() {
+        for deletion in [true, false] {
+            for stored in [true, false] {
+                let h = Harness()
+                let (session, _, _, node) = h.make()
+                node.releaseInvalidatesReceipts = true
+                node.schedulerSaveSucceeds = stored
+                node.testHandles = [MeshMessageHandle(), MeshMessageHandle()]
+                let schedule = Schedule(name: "Timed", enabled: true)
+                let action = ActionType.schedule(schedule: schedule)
+                let model = SyncDeviceStepTaskModel(name: "Timed", operationType: deletion ? .delete(node: node, type: action) : .configuration(node: node, type: action))
+                let applied = session.applyResult(node.testHandles, model: model, messageHandles: node.testHandles)
+                precondition(applied == stored, "Session must use the accepted batch and final persistence result")
+                precondition(node.updates == 2, "both receipts must be applied before finalization")
+                precondition(node.schedulerReconciliations == (stored ? 1 : 0))
+                if stored { precondition(node.testHandles.allSatisfy { !$0.isSuccessful }) }
+            }
+        }
+        print("PASS: production Session Timed delete/configure wiring preserves accepted receipts and propagates persistence failure")
     }
 
     static func sceneDeletionSubsetRetryRestoresPrerequisites() {

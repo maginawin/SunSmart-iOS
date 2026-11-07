@@ -92,6 +92,11 @@ extension GroupInfo {
     }
 }
 extension TimedSchedulerBindings {
+    // Scene storage calls commit with markCloudChange=false. The Timed SQLite
+    // suite covers the real revision transaction; do not silently emulate it here.
+    static func withLocalChange(_ changes: () throws -> Void) throws {
+        preconditionFailure("Timed user-intent revision belongs to the Timed SQLite suite")
+    }
     // ACTUAL_TIMED_COMMIT
 }
 

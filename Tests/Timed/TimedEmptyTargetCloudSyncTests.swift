@@ -54,6 +54,7 @@ final class Schedule {
         let needsSync: Bool
         func isEmpty() -> Bool { !needsSync }
     }
+    func slot(on node: Node) -> Int? { nil }
     func getNeedSyncDatas() -> SyncData { .init(needsSync: requiresDeviceSync) }
 }
 final class MeshNetworkManager {
@@ -69,13 +70,20 @@ enum DeviceSwitchData {
 }
 enum Permission { case owner, editor, visitor }
 final class SpaceData {
+    static var persistedRevision: Int64 = 100
     let id = "space", siteId = "site", meshUUID = "mesh", meshNetworkId = "network"
     var permission = Permission.owner, timedSchemaVersion = 2
     var lastUpdate: Int64 = 100, lastUploadCloudTimestamp: Int64? = 100
     var savedUpdate: Int64 = 100
     var deviceCount = 0, luminairesCount = 0, groupCount = 0, sceneCount = 0, scheheduleCount = 0, switchesCount = 0
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
-    @discardableResult func save() -> Bool { savedUpdate = lastUpdate; return true }
+    @discardableResult func save() -> Bool {
+        lastUpdate = max(lastUpdate, Self.persistedRevision)
+        savedUpdate = lastUpdate; Self.persistedRevision = lastUpdate; return true
+    }
+    static func load(siteId: String, spaceId: String) -> [SpaceData] {
+        let stored = SpaceData(); stored.lastUpdate = persistedRevision; return [stored]
+    }
     static func load(siteId: String) -> [SpaceData] { [] }
     func appliesCloud(remoteCount: Int, timestamp: Int64) -> Bool {
         let resumingImport = false, initialize = false
@@ -105,6 +113,13 @@ final class CloudSynchronizationManager {
         if case .syncSpace(let space) = operation { submissions.append((space.lastUpdate, space.scheheduleCount)) }
     }
 }
+// This suite starts after the reservation transaction. Real Schedule/SQLite
+// atomicity is exercised in check_timed_slot_persistence.py.
+enum TimedSchedulerBindings {
+    enum Failure: Error { case persistence }
+    static func recordCommit() { let stored = SpaceData(); stored.lastUpdate = SpaceData.persistedRevision; stored.markLocalChangePendingCloudSync() }
+    static func withLocalChange(_ changes: () throws -> Void) throws { try changes(); recordCommit() }
+}
 // PRODUCTION_SPACE_CHANGE
 final class Editor {
     let space: SpaceData
@@ -117,8 +132,10 @@ final class Editor {
     // Entry boundary: reservation transaction already succeeded; execute the
     // actual remaining controller body, including memory/notification ordering.
     func added(_ schedule: Schedule, groups: [Group], scene: Scene?, needSync: Bool) {
+        TimedSchedulerBindings.recordCommit()
         // PRODUCTION_ADD_SUCCESS
     func edited(_ schedule: Schedule, candidates: [Schedule]) {
+        TimedSchedulerBindings.recordCommit()
         // PRODUCTION_EDIT_SUCCESS
     // PRODUCTION_EMPTY_DELETE
 }
@@ -127,6 +144,7 @@ final class Editor {
     static func main() {
         let manager = MeshNetworkManager.instance
         for kind in ["group", "empty-scene", "scene-empty-group"] {
+            SpaceData.persistedRevision = 100
             Schedule.rows = [:]; manager.schedules = []; manager.groups = [Group()]
             CloudSynchronizationManager.shared.submissions = []
             let space = SpaceData()
@@ -191,16 +209,26 @@ final class Editor {
             NotificationCenter.default.removeObserver(observer)
             print("PASS: \(kind) 17 adds mark cloud immediately; old acknowledgement stays dirty; delete failure/success and edit-before-dismissal")
         }
-        // Device operations retain the existing SyncExecutionSession handoff.
+        // Intent is now queued before entering device synchronization; a stale
+        // page reads the transaction's persisted revision without incrementing it.
+        SpaceData.persistedRevision = 100
+        CloudSynchronizationManager.shared.submissions = []
         let space = SpaceData(), editor = Editor(space), item = Schedule(99)
-        let observer = NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: nil) { _ in
-            preconditionFailure("device sync must own its configuration completion")
+        let observer = NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: nil) { notification in
+            space.commitLocalChangeForCloudSync(changeType: notification.object as! SpaceChangeDataType)
         }
+        Schedule.rows = [99: item]
         editor.added(item, groups: [], scene: nil, needSync: true)
         item.requiresDeviceSync = true
         editor.edited(item, candidates: [item])
         precondition(editor.devicePushes == 2 && DispatchQueue.main.pending.isEmpty)
+        precondition(CloudSynchronizationManager.shared.submissions.count == 2 && space.needUploadCloud)
+        precondition(space.lastUpdate == SpaceData.persistedRevision)
+        let revision = space.lastUpdate
+        space.lastUploadCloudTimestamp = revision
+        space.commitLocalChangeForCloudSync(changeType: .syncResult(changed: false))
+        precondition(space.lastUpdate == revision && CloudSynchronizationManager.shared.submissions.count == 2)
         NotificationCenter.default.removeObserver(observer)
-        print("PASS: nonempty/device-sync add and edit retain their existing completion owner")
+        print("PASS: nonempty intent queues before device sync; stale page adopts persisted revision, clean no-op does not advance or enqueue")
     }
 }

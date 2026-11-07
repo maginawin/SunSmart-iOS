@@ -194,6 +194,14 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
+        if CommandLine.arguments.contains("--unconfirmed-nodes") {
+            defer {
+                try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
+                SpaceConfigurationSafety.testDefaults.removePersistentDomain(forName: SpaceConfigurationSafety.suite)
+            }
+            try await testUnconfirmedNodeImports()
+            return
+        }
         try testAcceptedLocalCompletion()
         try testRetiredTimedGenerationReceipts()
         try await testV3Receipts()
@@ -222,6 +230,7 @@ final class NetworkRequest {
             try await testNewerCloudImports()
             return
         }
+        try await testUnconfirmedNodeImports()
         try await testNewerLocalConfiguration()
         try await testOlderCloudConflictRecovery()
         try await testEqualCloudImports()
@@ -255,7 +264,10 @@ final class NetworkRequest {
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
         precondition(NetworkApiError.configurationUploadUnconfirmed.localizedDescription == "configuration_upload_unconfirmed")
         let request = NetworkRequest.shared
-        func remote(_ space: SpaceData) { request.result = .success(["data": space.payload]) }
+        func remote(_ space: SpaceData) {
+            ProximityLightingImportPreflight.storedSpace = space
+            request.result = .success(["data": space.payload])
+        }
         func addReceipt(_ space: SpaceData) {
             precondition(SpaceConfigurationSafety.updateDeletionJournal(space) {
                 $0.entries.append(.init(id: UUID(), nodeUUID: "device", primaryAddress: 2,
@@ -766,9 +778,11 @@ final class NetworkRequest {
 
     @MainActor static func testDirectUploadConfirmation() async throws {
         typealias S = SpaceConfigurationSafety
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
         let request = NetworkRequest.shared
         for variant in ["complete", "missing-net", "different-app"] {
             let space = SpaceData("accepted-" + variant)
+            ProximityLightingImportPreflight.storedSpace = space
             let context = S.prepareSubmission(space, payload: space.payload)!
             precondition(S.markSubmissionAccepted(context, space: space))
             precondition(try! S.recoveryState(space).submission?.phase == .accepted)
@@ -831,6 +845,7 @@ final class NetworkRequest {
         let secondContext = S.prepareSubmission(second, payload: second.payload)!
         precondition(S.markSubmissionAccepted(firstContext, space: first))
         precondition(S.markSubmissionAccepted(secondContext, space: second))
+        ProximityLightingImportPreflight.storedSpace = first
         request.result = .success(["data": first.payload])
         if case .failure = await S.resumeUpload(first) { preconditionFailure("first Space must confirm") }
         second.savesSucceed = false
@@ -839,6 +854,7 @@ final class NetworkRequest {
         second.savesSucceed = true
         let persisted = try S.recoveryState(second)
         precondition(persisted.submission?.phase == .accepted)
+        ProximityLightingImportPreflight.storedSpace = second
         request.result = .success(["data": second.payload])
         if case .failure = await S.resumeUpload(second) { preconditionFailure("second Space must confirm independently") }
         precondition(!S.hasPendingUpload(second))
@@ -964,6 +980,8 @@ final class NetworkRequest {
     @MainActor static func testEmptySceneSchedulesAddedDuringUpload() async throws {
         typealias S = SpaceConfigurationSafety
         let request = NetworkRequest.shared, space = SpaceData("empty-scene-concurrent-adds")
+        ProximityLightingImportPreflight.storedSpace = space
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
         space.timedSchemaVersion = 2
         let schedules: [[String: Any]] = (0..<17).map { id in
             ["id": id, "name": "Empty \(id)", "enabled": true, "selectTarget": 2,
@@ -1000,6 +1018,7 @@ final class NetworkRequest {
 
     @MainActor static func testEmptySceneTargetReadback() async throws {
         typealias S = SpaceConfigurationSafety
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
         let request = NetworkRequest.shared
         for enabled in [true, false] {
             let space = SpaceData("empty-scene-target-\(enabled)")
@@ -1033,6 +1052,7 @@ final class NetworkRequest {
                 let directMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
                 precondition(!directMatches, "Empty targets must not absorb added targets, missing fields or deleted schedules")
                 let changedSpace = SpaceData()
+                ProximityLightingImportPreflight.storedSpace = changedSpace
                 changedSpace.exportValues = submitted.filter { !["uuid", "nodes", "groups", "updateTimestamp", "netKey", "appKey"].contains($0.key) }
                 let old = S.prepareSubmission(changedSpace, payload: changedSpace.payload)!
                 precondition(S.markSubmissionAccepted(old, space: changedSpace))
@@ -1065,6 +1085,8 @@ final class NetworkRequest {
     @MainActor static func testV3Receipts() async throws {
         typealias S = SpaceConfigurationSafety
         let space = SpaceData("timed-v3-receipt")
+        ProximityLightingImportPreflight.storedSpace = space
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
         space.lastUploadCloudTimestamp = 49
         space.timedSchemaVersion = 3
         space.nodes = [["uuid": "00000000-0000-0000-0000-000000000010", "unicastAddress": "0010",
@@ -1088,7 +1110,17 @@ final class NetworkRequest {
         NetworkRequest.shared.result = .success(["data": changed])
         let mismatched = await S.verifyUploadedConfiguration(space, payload: submitted)
         precondition(!mismatched && S.hasPendingUpload(space), "a different per-node result must not acknowledge the submitted document")
-        NetworkRequest.shared.result = .success(["data": submitted])
+        var returned = submitted
+        var returnedNodes = returned["nodes"] as! [[String: Any]]
+        returnedNodes[0]["schedules"] = "server legacy data"
+        returnedNodes[0]["custProps"] = ["schedulerModelStates": ["unused": true]]
+        returned["nodes"] = returnedNodes
+        var returnedRows = returned["schedules"] as! [[String: Any]]
+        returnedRows[0]["needDeleteNodeAddresses"] = ["FFFF"]
+        returnedRows[0]["needDeleteGroupAddresses"] = NSNull()
+        returnedRows[0]["needDeleteSceneNumbers"] = 42
+        returned["schedules"] = returnedRows
+        NetworkRequest.shared.result = .success(["data": returned])
         let matched = await S.verifyUploadedConfiguration(space, payload: submitted)
         precondition(matched)
         if case .failure = await S.resumeUpload(space) { preconditionFailure("v3 receipt retry") }
@@ -1096,6 +1128,34 @@ final class NetworkRequest {
         precondition(!S.hasPendingUpload(space) && confirmed.schedulerModelStatesBaseline == nil)
         precondition(TimedSchedulerPayloadPolicy.comparisonsMatch(confirmed.timedConfigurationBaseline,
             TimedSchedulerPayloadPolicy.canonical(submitted)))
+        let cleanRevision = space.lastUpdate
+        precondition(S.restorePendingTimedUpload(space, payload: submitted))
+        precondition(space.lastUpdate == cleanRevision, "pendingApply already confirmed by cloud is not a local edit")
+        space.savesSucceed = false
+        precondition(!S.restorePendingTimedUpload(space, payload: changed))
+        precondition(space.lastUpdate == cleanRevision, "failed marker persistence restores the in-memory revision")
+        space.savesSucceed = true
+        space.permission = .visitor
+        precondition(!S.restorePendingTimedUpload(space, payload: changed))
+        space.permission = .owner
+        var restricted = confirmed
+        restricted.requiresRemoteImport = true
+        try S.testSaveState(restricted, space: space)
+        precondition(!S.restorePendingTimedUpload(space, payload: changed))
+        try S.testSaveState(confirmed, space: space)
+        precondition(S.restorePendingTimedUpload(space, payload: changed))
+        precondition(space.needUploadCloud && space.lastUpdate > cleanRevision)
+        let repairedRevision = space.lastUpdate
+        precondition(S.restorePendingTimedUpload(space, payload: changed))
+        precondition(space.lastUpdate == repairedRevision, "repeat cleanup cannot keep dirtying the same intent")
+        let unchangedBaseline = try S.recoveryState(space)
+        precondition(unchangedBaseline.timedConfigurationBaseline == confirmed.timedConfigurationBaseline)
+        space.lastUpdate = cleanRevision
+        restricted = confirmed; restricted.timedConfigurationBaseline = nil
+        try S.testSaveState(restricted, space: space)
+        precondition(!S.restorePendingTimedUpload(space, payload: changed))
+        precondition(space.lastUpdate == cleanRevision && S.requiresConfigurationReview(space))
+        print("PASS: missing Timed revision recovery, unchanged pendingApply, failed save, authority restriction, idempotency and missing-baseline review")
         print("PASS: v3 pending/synced comparison, omitted Model receipt, disk reopen, mismatch retention and confirmed retry")
     }
 
@@ -2388,6 +2448,7 @@ extension SpaceRecoveryReceiptTests {
     @MainActor static func testSceneReceipts() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = SpaceConfigurationIntegrityPolicy
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
         let space = SpaceData("scene-receipt")
         let config = SceneConfiguration(kind: .devices, name: "Pending", pendingOperations: [
             .init(identity: .init(nodeUUID: "11111111-1111-1111-1111-111111111111", unicastAddress: "0001",
@@ -2411,6 +2472,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(!matches, "dropped fields/intent cannot acknowledge upload")
             precondition(S.hasPendingUpload(space), "mismatched verification must not acknowledge the receipt")
             let conflict = SpaceData("scene-cloud-conflict-\(alteration)")
+            ProximityLightingImportPreflight.storedSpace = conflict
             conflict.exportValues = space.exportValues
             conflict.lastUploadCloudTimestamp = 49
             let old = S.prepareSubmission(conflict, payload: conflict.payload)!
@@ -2478,6 +2540,7 @@ extension SpaceRecoveryReceiptTests {
 
             precondition(!SpaceData.canDecodeConfigurationImport(invalid))
             let readback = SpaceData("bad-scene-readback-" + event)
+            ProximityLightingImportPreflight.storedSpace = readback
             readback.permission = .editor; readback.lastUploadCloudTimestamp = 49
             let pending = S.prepareSubmission(readback, payload: readback.payload)!
             precondition(S.markSubmissionAccepted(pending, space: readback))

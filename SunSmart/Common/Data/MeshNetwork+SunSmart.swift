@@ -3166,7 +3166,7 @@ extension Node {
     
     /// 更新节点缓存数据
     /// - Parameter isSuccess: 消息发送成功
-    func updateData(message: MeshMessage, isSuccess: Bool = true, model: Model? = nil) {
+    func updateData(message: MeshMessage, isSuccess: Bool = true, model: Model? = nil, finalizeSchedulerBinding: Bool = true) {
        
         guard isSuccess || message is ConfigModelSubscriptionDelete else {
             return
@@ -3364,7 +3364,7 @@ extension Node {
                             schedule.save()
                         }
                         schedule.reconcilePendingSceneReferences()
-                        schedule.releaseClearedBinding(on: self)
+                        if finalizeSchedulerBinding { schedule.releaseClearedBinding(on: self) }
 //                    }
                     
                 }
@@ -3372,7 +3372,7 @@ extension Node {
             }
             // Both a clear and an overwrite can release an old Scene reference.
             self.timedSchedule(at: index)?.reconcilePendingSceneReferences()
-            if self.savePropertys() {
+            if self.savePropertys(), finalizeSchedulerBinding {
                 self.timedSchedule(at: index)?.reconcileBinding(on: self)
             }
         case is LightLCLightOnOffSet, is LightLCLightOnOffSetUnacknowledged, is GenericOnOffSetUnacknowledged: // 点击Auto / Off

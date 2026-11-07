@@ -245,14 +245,14 @@ extension SiteTimeSetMessageFactory {
             let active = Thread.isMainThread ? isCurrent() : DispatchQueue.main.sync(execute: isCurrent)
             return active && context.canSend()
         }
-        guard let completion else { MeshAPI.sendMessage(handle: handle); return }
-        // Retain a temporary Gateway connection through the GATT write receipt,
-        // including BLE backpressure. Its supplementary ACK is not a success prerequisite.
+        // Ordinary sync and temporary Gateway connections use the same bounded
+        // GATT submission. An optional transition must not own the destination's
+        // ACK slot while Scheduler / Switch tasks advance after TimeStatus.
         Task { @MainActor in
-            guard handle.prepareMessageForSend() else { completion(); return }
+            guard handle.prepareMessageForSend() else { completion?(); return }
             _ = try? await MeshNetworkManager.instance.submitTimeZoneSet(message, to: setup,
                 isCurrent: { handle.transmissionIsValid?() == true })
-            completion()
+            completion?()
         }
     }
 
@@ -286,7 +286,10 @@ extension SiteTimeSetMessageFactory {
             if let handle {
                 DispatchQueue.main.async {
                     guard handle.hasPreparedTransmission, handle.isSuccessful else { return }
-                    context.enqueueTransition(model: model)
+                    // Preserve the caller's operation guard through GATT backpressure,
+                    // including STOP/replacement after the TimeStatus was accepted.
+                    context.enqueueTransition(model: model,
+                        isCurrent: { handle.transmissionIsValid?() ?? true })
                 }
             }
             return true

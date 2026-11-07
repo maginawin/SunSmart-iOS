@@ -71,8 +71,23 @@ final class SyncExecutionSession {
 
     #if DEBUG
     private func traceSceneSync(_ stage: String, detail: String = "") {
-        guard case .scene(let scene) = type else { return }
-        print("[SceneSync] run=\(identifier) scene=\(scene.number) stage=\(stage) \(detail)")
+        switch type {
+        case .scene(let scene):
+            print("[SceneSync] run=\(identifier) scene=\(scene.number) stage=\(stage) \(detail)")
+        case .group(let group, _, _):
+            let device = (currentTask as? SyncDevicesModel) ?? (currentTask as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+            let operation: String
+            switch currentTask.flatMap({ operationType(for: $0) }) {
+            case .delete(_, .schedule(let schedule)): operation = "removeSchedule:\(schedule.id)"
+            case .configuration(_, .schedule(let schedule)): operation = "schedule:\(schedule.id)"
+            case .delete: operation = "delete"
+            case .configuration: operation = "configuration"
+            default: operation = "other"
+            }
+            let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
+            print("[GroupSync] diagnostics=remove-schedule-v2 build=\(build) run=\(identifier) group=\(group.address.address.hex) node=\(device?.address.hex ?? "none") operation=\(operation) stage=\(stage) \(detail)")
+        default: break
+        }
     }
     #endif
 
@@ -199,6 +214,19 @@ final class SyncExecutionSession {
         var handles = parameterOnlyOperations[ObjectIdentifier(model)]?() ?? operationType(for: model)?.messageHandles ?? []
         handles = prepareDaylightHandles(for: model, handles: handles)
         handles = batteryPowerSwitchMessageHandles(for: model, defaultHandles: handles)
+        for handle in handles where handle.message is TimeSet {
+            let valid = handle.transmissionIsValid
+            handle.transmissionIsValid = { [weak self] in
+                // Normal completion permits its already accepted supplementary
+                // write; STOP, close and a replacement run invalidate the identity.
+                let check = {
+                    guard let self else { return false }
+                    return self.coordinator.lifecycle.isCurrent(identifier) && !self.coordinator.closed
+                        && self.environment.configurationIsCurrent() && (valid?() ?? true)
+                }
+                return Thread.isMainThread ? check() : DispatchQueue.main.sync(execute: check)
+            }
+        }
         #if DEBUG
         traceSceneSync("commandsBuilt", detail: "count=\(handles.count)")
         #endif
@@ -366,9 +394,12 @@ final class SyncExecutionSession {
             guard isActiveSyncRun(identifier), completionGate.claim(), validatePlan(identifier, handles: handles) else { return }
             if hdbZoneAcknowledgementAttempt == acknowledgementAttempt { hdbZoneAcknowledgementAttempt = nil }
             let activatedSceneSwitch = sceneDeletionTask(for: model)?.activationSwitch != nil
+            #if DEBUG
+            let acceptedBeforeApply = resultMessageHandles.filter { $0.isSuccessful }.count
+            #endif
             let successful = applyResult(resultMessageHandles, model: model, messageHandles: handles)
             #if DEBUG
-            traceSceneSync("batchResult", detail: "returned=\(resultMessageHandles.count) acknowledged=\(resultMessageHandles.filter { $0.isSuccessful }.count) applied=\(successful)")
+            traceSceneSync("batchResult", detail: "returned=\(resultMessageHandles.count) acceptedBeforeApply=\(acceptedBeforeApply) applied=\(successful)")
             #endif
             if successful, let task = sceneDeletionTask(for: model), !task.followUpMessageHandles.isEmpty {
                 send(model, handles: task.followUpMessageHandles, identifier: identifier, attempt: attempt)

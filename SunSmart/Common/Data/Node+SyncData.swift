@@ -1525,10 +1525,24 @@ extension Node {
             guard sceneSetupModel != nil else { return [] }
             return (scene.map { [$0] } ?? MeshNetworkManager.instance.scenes).compactMap { scene in
                 guard let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: scene),
-                      let identity = sceneSyncReadIdentity,
-                      let target = snapshot.writeData(scene: scene, node: self, identity: identity) else { return nil }
-                if snapshot.comparison.kind == .groups, let group,
-                   !(NodeSyncReadContext.current?.sceneReads.contains(self, in: group) ?? group.nodes.contains(self)) { return nil }
+                      let identity = sceneSyncReadIdentity else { return nil }
+                let target: SceneExecuteData
+                if snapshot.comparison.kind == .groups, let group {
+                    // Include the existing persisted join intent before subscription.
+                    // Reserve/send still resolve actual membership after that task succeeds.
+                    let observedGroup = NodeSyncReadContext.current?.sceneGroup(for: self) ?? self.group
+                    let belongs = observedGroup?.address.address == group.address.address
+                        || (observedGroup == nil && restoreData?.addGroupAddress == group.address.address)
+                    guard belongs, onoffModel != nil, groupState != .exitFailure, !snapshot.comparison.isDeleting,
+                          snapshot.comparison.groupParameters[group.address.address] != nil,
+                          let desired = group.info.sceneExecuteDatas.first(where: {
+                              $0.sceneNumber == scene.number && $0.state == .normal
+                          }) else { return nil }
+                    target = desired.deviceTarget(for: self)
+                } else {
+                    guard let resolved = snapshot.writeData(scene: scene, node: self, identity: identity) else { return nil }
+                    target = resolved
+                }
                 let pending = scene.info.configuration?.pendingOperations.contains {
                     $0.identity == identity && $0.action == .write
                 } == true

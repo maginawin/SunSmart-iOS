@@ -110,7 +110,7 @@ enum SceneCommandBuilder {
         }
     }
 
-    static func captureConfigurations() -> () -> Bool {
+    static func captureConfigurations(progress: SceneSyncProgress? = nil) -> () -> Bool {
         let manager = MeshNetworkManager.instance
         let scenes = manager.scenes.filter { !$0.number.isSpecialScene }
         let snapshots = scenes.map { scene -> SceneTargetSnapshot? in
@@ -118,11 +118,13 @@ enum SceneCommandBuilder {
             return try? SceneTargetResolver.resolve(scene: scene)
         }
         return {
+            guard progress?.isCurrent() != false else { return false }
             guard manager.scenes.filter({ !$0.number.isSpecialScene }).map(\.number).sorted() == scenes.map(\.number).sorted() else { return false }
             return zip(scenes, snapshots).allSatisfy { scene, old in
                 guard manager.scenes.contains(where: { $0 === scene }), !scene.info.projectionPending,
                       let old, let current = try? SceneTargetResolver.resolve(scene: scene) else { return false }
-                return old.revision == current.revision && old.taskComparison == current.taskComparison
+                return old.revision == current.revision
+                    && (progress?.comparison(old) ?? old.taskComparison) == (progress?.comparison(current) ?? current.taskComparison)
             }
         }
     }
@@ -150,6 +152,127 @@ enum SceneCommandBuilder {
         }
         handle.continuous = false
         return [handle]
+    }
+}
+
+/// Only commands submitted by this plan may advance its observed Scene inputs.
+/// Desired Scene data and per-message ownership retain their strict comparisons.
+final class SceneSyncProgress {
+    enum Change {
+        case subscription(Group, adding: Bool)
+        case lightnessRange(ClosedRange<UInt16>)
+    }
+
+    private struct Observation: Equatable {
+        let identity: TimedSchedulerNodeIdentity?
+        let network: ObjectIdentifier?
+        let subNetworkID: String?
+        var group: ObjectIdentifier?
+        var groupAddress: Address?
+        var pendingGroupAddress: Address?
+        let hasScene: Bool
+        let hasOnOff: Bool
+        let hasLightness: Bool
+        let hasCct: Bool
+        var lightnessRange: ClosedRange<UInt16>
+        let cctRange: ClosedRange<UInt16>
+        var exiting: Bool
+
+        init(_ node: Node) {
+            identity = node.sceneConfigurationIdentity
+            network = node.network.map(ObjectIdentifier.init)
+            subNetworkID = node.subNetworkId
+            group = node.group.map(ObjectIdentifier.init)
+            groupAddress = node.group?.address.address
+            pendingGroupAddress = node.restoreData?.addGroupAddress
+            hasScene = node.sceneSetupModel != nil
+            hasOnOff = node.onoffModel != nil
+            hasLightness = node.lightnessModel != nil
+            hasCct = node.effectiveSupportCct
+            lightnessRange = node.lightnessRange
+            cctRange = node.effectiveCctRange
+            exiting = node.groupState == .exitFailure
+        }
+    }
+
+    private struct Entry {
+        let node: Node
+        var observed: Observation
+        var expected: Observation
+        var completesExit = false
+    }
+    private var entries: [ObjectIdentifier: Entry] = [:]
+    private var changingIdentities = Set<TimedSchedulerNodeIdentity>()
+
+    init() {
+        for node in MeshNetworkManager.instance.realNodes {
+            let observation = Observation(node)
+            entries[ObjectIdentifier(node)] = Entry(node: node, observed: observation, expected: observation)
+        }
+    }
+
+    func expect(node: Node, change: Change) {
+        let key = ObjectIdentifier(node)
+        guard var entry = entries[key] else { return }
+        let initial = entry.observed
+        guard let identity = initial.identity else { return }
+        switch change {
+        case .subscription(let group, let adding):
+            if adding {
+                // Subscribing an auxiliary group must not authorize moving a member.
+                guard initial.group == nil || initial.group == ObjectIdentifier(group) else { return }
+                guard initial.pendingGroupAddress == nil || initial.pendingGroupAddress == group.address.address else { return }
+                entry.expected.group = ObjectIdentifier(group)
+                entry.expected.groupAddress = group.address.address
+                entry.expected.pendingGroupAddress = nil
+            } else {
+                guard initial.group == ObjectIdentifier(group) else { return }
+                entry.expected.group = nil
+                entry.expected.groupAddress = nil
+                entry.completesExit = true
+            }
+        case .lightnessRange(let range): entry.expected.lightnessRange = range
+        }
+        entries[key] = entry
+        changingIdentities.insert(identity)
+    }
+
+    func isCurrent() -> Bool {
+        let nodes = MeshNetworkManager.instance.realNodes
+        guard nodes.count == entries.count else { return false }
+        let currentNodes = Set(nodes.map(ObjectIdentifier.init))
+        var updated = entries
+        for (key, var entry) in entries {
+            guard currentNodes.contains(key) else { return false }
+            let current = Observation(entry.node)
+            var allowed = entry.observed
+            if current.group == entry.expected.group {
+                allowed.group = current.group
+                allowed.groupAddress = entry.expected.groupAddress
+                if current.pendingGroupAddress == entry.expected.pendingGroupAddress {
+                    allowed.pendingGroupAddress = current.pendingGroupAddress
+                }
+            }
+            if current.lightnessRange == entry.expected.lightnessRange { allowed.lightnessRange = current.lightnessRange }
+            // The final unsubscribe also completes the existing exit intent.
+            if entry.completesExit, entry.observed.exiting, current.group == nil {
+                allowed.exiting = current.exiting
+            }
+            guard current == allowed else { return false }
+            entry.observed = current // Once observed, an old value is no longer accepted.
+            updated[key] = entry
+        }
+        entries = updated
+        return true
+    }
+
+    func comparison(_ snapshot: SceneTargetSnapshot) -> SceneTargetSnapshot.Comparison {
+        var value = snapshot.taskComparison
+        // These derived values are protected by the exact observation transitions
+        // above. Configuration, revision, members and group parameters stay strict.
+        value.targets.removeAll { changingIdentities.contains($0.identity) }
+        value.capabilities.removeAll { changingIdentities.contains($0.identity) }
+        return value
     }
 }
 

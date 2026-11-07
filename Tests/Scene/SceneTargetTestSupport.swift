@@ -8,6 +8,7 @@ extension UInt16 {
 }
 extension Int { static let sceneSetupServerModelId = 0x1204 }
 final class Element {
+    var unicastAddress: UInt16 = 0
     var observedSceneRegister: Set<UInt16>?
     weak var setupModel: Model?
     func model(withSigModelId: Int) -> Model? { setupModel }
@@ -17,7 +18,15 @@ final class Model {
     init() { parentElement?.setupModel = self }
 }
 final class Network { let uuid = UUID() }
+struct FixtureTransition { let rawValue: UInt8 }
+struct NodeRestoreData {
+    var addGroupAddress: UInt16?
+    var addGroup: Group? { MeshNetworkManager.instance.groups.first { $0.address.address == addGroupAddress } }
+    var pwmFrequency: Int?; var phaseEnergyConsumptions: Int?
+    var motionSensitivityRange: Int?; var photosensorException: Int?; var defaultTransitionTime: FixtureTransition?
+}
 final class Node: NSObject {
+    var restoreData: NodeRestoreData?
     enum GroupState { case normal, exitFailure }
     var uuid: UUID
     let primaryUnicastAddress: Address
@@ -84,6 +93,7 @@ final class SceneExecuteData: Codable {
 }
 final class GroupInfo { var sceneExecuteDatas: [SceneExecuteData] = []; var bindSchedules: [Schedule] = []; var saves = 0 }
 final class Group: NSObject {
+    var isVirtual = false
     struct GroupAddress: Equatable { let address: UInt16 }
     let address: GroupAddress
     let info = GroupInfo()

@@ -247,7 +247,8 @@ enum SpaceSyncCleanupCoordinator {
         space.lastUpdate = reloaded.lastUpdate
         space.deviceCount = reloaded.deviceCount
         space.luminairesCount = reloaded.luminairesCount
-        guard SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: didChange) else { return false }
+        guard SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: didChange),
+              SpaceConfigurationSafety.restorePendingTimedUpload(space, payload: readback) else { return false }
         if didChange {
             nodes.forEach { $0.clearSyncStateCache() }
             let manager = MeshNetworkManager.instance
@@ -289,6 +290,30 @@ enum SpaceSyncCleanupCoordinator {
         return nil
     }
 
+    /// Shared v3 bindings must regain their validated provisioning identity
+    /// before entering the local Schedule codec or persistence layer.
+    static func cleanupSchedules(_ payload: [String: Any]) throws -> [Schedule] {
+        guard let rows = TimedSchedulerPayloadPolicy.decodingSchedules(payload) else {
+            #if DEBUG
+            print("[SpaceSyncCleanup] stage=timedValidation failed")
+            #endif
+            throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+        }
+        do {
+            let schedules = try JSONDecoder().decode([Schedule].self,
+                from: JSONSerialization.data(withJSONObject: rows))
+            guard Set(schedules.map(\.id)).count == schedules.count else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            return schedules
+        } catch {
+            #if DEBUG
+            print("[SpaceSyncCleanup] stage=timedDecode errorType=\(Swift.type(of: error))")
+            #endif
+            throw error
+        }
+    }
+
     /// Every closure describes a real change. Empty targets are retained as user
     /// objects; observed device state is not fabricated to match the new target.
     private static func extensionChanges(space: SpaceData, network: MeshNetwork,
@@ -316,13 +341,7 @@ enum SpaceSyncCleanupCoordinator {
             }
         }
         let sceneNumbers = Set(network.scenes.map(\.number))
-        guard let timedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(cleaned.payload),
-              let timedRows = timedPayload["schedules"] as? [[String: Any]],
-              let timedData = try? JSONSerialization.data(withJSONObject: timedRows),
-              let timedSchedules = try? JSONDecoder().decode([Schedule].self, from: timedData),
-              Set(timedSchedules.map(\.id)).count == timedSchedules.count else {
-            throw SpaceConfigurationSafety.SafetyError.persistenceFailed
-        }
+        let timedSchedules = try cleanupSchedules(cleaned.payload)
         let timedByID = Dictionary(uniqueKeysWithValues: timedSchedules.map { ($0.id, $0) })
         for schedule in Schedule.load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) {
             guard let timed = timedByID[schedule.id] else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
@@ -549,7 +568,7 @@ enum SpaceSyncAccess {
 }
 
 enum SpaceSyncTaskScope {
-    static func capture() -> () -> Bool {
+    static func capture(sceneProgress: SceneSyncProgress? = nil) -> () -> Bool {
         let manager = MeshNetworkManager.instance
         guard let network = manager.meshNetwork else { return { false } }
         let account = UserData.currentUserId
@@ -566,7 +585,7 @@ enum SpaceSyncTaskScope {
             return try? encoder.encode(space.triggerZones)
         }
         let spaceZones = zones()
-        let scenesAreCurrent = SceneCommandBuilder.captureConfigurations()
+        let scenesAreCurrent = SceneCommandBuilder.captureConfigurations(progress: sceneProgress)
         return {
             guard account == UserData.currentUserId, region == UserData.currentServerRegion,
                   manager.meshNetwork === network, manager.currentNetworkKey.networkId.hex == networkID,
@@ -580,6 +599,23 @@ enum SpaceSyncTaskScope {
                   zip(groups, paths).allSatisfy({ group, path in (try? encoder.encode(group.info.proximityLightingPath)) == path }),
                   zones() == spaceZones, scenesAreCurrent() else { return false }
             return true
+        }
+    }
+
+    static func expectSceneProgress(_ handles: [MeshMessageHandle], in progress: SceneSyncProgress) {
+        let manager = MeshNetworkManager.instance
+        for handle in handles {
+            guard let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
+                  let node = manager.meshNetwork?.node(withAddress: address) else { continue }
+            if let message = handle.message as? LightLightnessRangeSet {
+                progress.expect(node: node, change: .lightnessRange(message.range))
+            } else if let message = handle.message as? ConfigModelSubscriptionAdd,
+                      let group = manager.groups.first(where: { NodeSyncTopologyCapture.isMembershipGroup($0) && $0.address.address == message.address }) {
+                progress.expect(node: node, change: .subscription(group, adding: true))
+            } else if let message = handle.message as? ConfigModelSubscriptionDelete,
+                      let group = manager.groups.first(where: { NodeSyncTopologyCapture.isMembershipGroup($0) && $0.address.address == message.address }) {
+                progress.expect(node: node, change: .subscription(group, adding: false))
+            }
         }
     }
 }

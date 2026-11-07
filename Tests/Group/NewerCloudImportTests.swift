@@ -165,6 +165,14 @@ extension SpaceRecoveryReceiptTests {
                 selectedGeneration = try S.recoveryState(space).generation
             }
             NetworkRequest.shared.result = .success(["data": remote])
+            if mode == "prepared" {
+                guard case .failure = await S.resumeUpload(space) else {
+                    preconditionFailure("unknown upload must preserve locally present missing instances")
+                }
+                precondition(space.nodes.count == 3 && S.hasPendingUpload(space) && space.needUploadCloud)
+                precondition(try! S.recoveryState(space) == previous)
+                continue
+            }
             if mode == "retry" {
                 S.failStateWrite = true
                 guard case .failure = await S.resumeUpload(space) else { preconditionFailure("failed staging cannot complete") }
@@ -216,14 +224,11 @@ extension SpaceRecoveryReceiptTests {
             P.storedSpace = space
             precondition(S.prepareSubmission(space, payload: space.payload) != nil)
             NetworkRequest.shared.result = .success(["data": remote])
-            guard case .success = await S.resumeUpload(space) else { preconditionFailure("field prepared receipt must yield to equal cloud") }
-            precondition(space.nodes.count == 9 && space.nodes.contains { $0["unicastAddress"] as? String == "1152" })
-            precondition(!space.nodes.contains { ["113A", "115B"].contains($0["unicastAddress"] as? String ?? "") })
-            precondition((space.groups.first { $0["address"] as? String == "C002" }?["profile"] as? [String: Any])?["calibrationMode"] as? String == "planeCal")
-            precondition(NSDictionary(dictionary: ["schedules": space.payload["schedules"]!])
-                .isEqual(to: ["schedules": TimedSchedulerPayloadPolicy.fillingMissingBindings(remote)["schedules"]!]), "equal-version import retains cloud schedule fields")
-            precondition(!S.hasPendingUpload(space) && !S.isBlocked(space) && !space.needUploadCloud)
-            print("PASS: supplied equal-version 10-to-9 sample imports cloud L11 and C002 calibration, removes local-only L9/L10 and retires prepared receipt")
+            guard case .failure = await S.resumeUpload(space) else { preconditionFailure("unknown field submission must retain missing local nodes") }
+            precondition(NSDictionary(dictionary: ["nodes": space.nodes]).isEqual(to: ["nodes": local["nodes"]!]))
+            precondition(NSDictionary(dictionary: ["groups": space.groups]).isEqual(to: ["groups": local["groups"]!]))
+            precondition(S.hasPendingUpload(space) && space.needUploadCloud && !S.hasPendingImport(space))
+            print("PASS: supplied equal-version sample preserves local nodes and prepared receipt instead of selecting incomplete cloud membership")
         }
     }
 

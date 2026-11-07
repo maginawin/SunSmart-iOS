@@ -96,6 +96,8 @@ enum GroupMemberPersistence {
     static func recover(_ space: SpaceData) -> Bool { Fixture.memberRecoveryCalls += 1; return Fixture.memberRecoverySucceeds }
 }
 enum SpaceConfigurationSafety {
+    static func needsUpgradeBaseline(_ space: SpaceData) -> Bool { !Fixture.cloudRecoverySucceeds }
+    static func restorePendingTimedUpload(_ space: SpaceData, payload: [String: Any]) -> Bool { true }
     static func recoverCloudMembershipIfNeeded(_ space: SpaceData) async -> Bool { Fixture.cloudRecoverySucceeds }
     static func hasPendingUpload(_ space: SpaceData) -> Bool { Fixture.pendingUpload }
     static func configurationSyncError(_ space: SpaceData) -> NetworkApiError { .configurationUnavailable }

@@ -15,14 +15,21 @@ def block(marker):
     return source[start:end].replace('@objc ', '').replace('private func', 'func')
 swift = r'''
 import Foundation
-extension String { var localizedString: String { self } }
+extension String { var localizedString: String { self }; var hex: String { self } }
 enum Kind { case groups, devices }
 struct Draft { var kind: Kind = .groups; var revision = UUID(); var number: Int? = 1; var scope = 1 }
 final class Scene {
-    struct Configuration { var pendingOperations: [Int] = [] }
+    struct Configuration { var pendingOperations: [Int] = []; var isDeleting = false }
     struct Info { var configuration: Configuration? = Configuration() }
     var needSync = false
     var info = Info()
+    var subNetworkId: String? = "space"
+}
+final class MeshNetworkManager {
+    static let instance = MeshNetworkManager()
+    var scenes: [Scene] = []
+    struct Key { var networkId = "space" }
+    var currentNetworkKey = Key()
 }
 final class SceneDraftSelection { var draft: Draft; init(draft: Draft) { self.draft = draft } }
 typealias TimedSchedulerNodeIdentity = Int
@@ -35,6 +42,7 @@ struct SceneConfigurationStore {
     static var allowed = true
     static var unchanged: Scene?
     static func validateAccess(_ scope: Int) throws { if !allowed { throw Failure.staleDraft } }
+    func prepareDeletionRetries() throws {}
     func editingDraft(for scene: Scene) throws -> Draft { Draft() }
     func sceneIfUnchanged(draft: Draft) throws -> Scene? {
         try Self.validateAccess(draft.scope)
@@ -54,7 +62,12 @@ enum ScheduleServer {
     static var completion: ((Bool) -> Void)?
     static func readUnknownSchedulerState(nodes: [Int], completion: @escaping (Bool) -> Void) { Self.completion = completion }
 }
-enum XWHUDManager { static func hide() {}; static func showCustomHUD(withMessage: String, isWindow: Bool) {} }
+enum XWHUDManager {
+    static func hide() {}
+    static func showCustomHUD(withMessage: String, isWindow: Bool) {}
+    static func showTipHUD(_ message: String, isLineFeed: Bool) {}
+    static func showErrorTipHUD(_ message: String) {}
+}
 enum DispatchQueue { struct Queue { func async(_ action: () -> Void) { action() } }; static let main = Queue() }
 enum SpaceChangeDataType { case common }
 let spaceDataChangedNotificaitonName = "space", sceneDataUpdateNotificationName = "scene", scenesRefreshNotificationName = "scenes"
@@ -86,11 +99,14 @@ final class Coordinator {
     }
 }
 final class SyncDevicesViewController {
-    enum Kind { case scene(Scene) }
+    enum Kind { case scene(Scene), devices, group }
     enum SyncState { case syncSuccess, syncFailure }
     struct Initialization { var isKeybindComplete = false }
     var hdbAwaitingInitialization: [Initialization] = []
     var hasLeftSyncPage = false
+    var gatewayContext: Int?
+    var syncState = SyncState.syncSuccess
+    func updateSyncStateUI() {}
     var backActionCallback: (([Int]) -> Void)?
     var syncSuccessCallback: ((Kind) -> Void)?
     let type: Kind
@@ -150,7 +166,42 @@ final class Settings {
 }
 func check(_ condition: Bool, _ message: String) { if !condition { print("FAIL: \(message)"); exit(1) }; print("PASS: \(message)") }
 @main enum Tests {
+    static func checkExitRefresh() {
+        final class Observed { var scenes: [Scene] = [] }
+        let manager = MeshNetworkManager.instance
+        let observed = Observed()
+        let token = NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) { note in
+            if let scene = note.object as? Scene { observed.scenes.append(scene) }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+        for creating in [true, false] {
+            for partial in [true, false] {
+                let editor = Settings(), saved = Scene(), other = Scene()
+                manager.scenes = [other, saved]
+                editor.finishesCreation = creating
+                observed.scenes.removeAll()
+                editor.openSyncPage(saved)
+                let sync = editor.navigationController!.pushed[0]
+                sync.complete(.syncFailure)
+                check(observed.scenes.count == 1, "save publishes once; a failed run stays open")
+                if partial { sync.backActionCallback?([]) } else { sync.complete(.syncSuccess) }
+                sync.complete(.syncSuccess); sync.backActionCallback?([])
+                check(observed.scenes.count == 2 && observed.scenes.allSatisfy { $0 === saved },
+                      "one refresh for saved Scene after exit: create=\(creating) partial=\(partial)")
+            }
+        }
+        for switchSubnet in [true, false] {
+            let editor = Settings(), saved = Scene()
+            manager.scenes = [saved]; observed.scenes.removeAll()
+            editor.openSyncPage(saved)
+            if switchSubnet { manager.currentNetworkKey.networkId = "other" } else { manager.scenes = [Scene()] }
+            editor.navigationController!.pushed[0].backActionCallback?([])
+            check(observed.scenes.count == 1 && editor.navigationController!.pops == 1, "stale exit closes without refreshing another Scene or Space")
+            manager.currentNetworkKey.networkId = "space"
+        }
+    }
     static func main() {
+        checkExitRefresh()
         let unchanged = Settings(), existing = Scene()
         SceneConfigurationStore.unchanged = existing
         unchanged.doneAction(); unchanged.doneAction()

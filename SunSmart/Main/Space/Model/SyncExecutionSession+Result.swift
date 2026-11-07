@@ -17,6 +17,14 @@ extension SyncExecutionSession {
         if case .configuration(_, .hdb(let task)) = operationType(for: model) {
             return task.persist(result: resultMessageHandles)
         }
+        if let operation = operationType(for: model) {
+            switch operation {
+            case .delete(let node, .schedule(let schedule)), .configuration(let node, .schedule(let schedule)):
+                return schedule.applySchedulerResults(resultMessageHandles, expected: messageHandles, on: node)
+                    && operation.isSuccessful
+            default: break
+            }
+        }
         if messageHandles.contains(where: { $0.sceneContext != nil }) {
             guard !messageHandles.isEmpty, resultMessageHandles.count == messageHandles.count,
                   resultMessageHandles.allSatisfy({ $0.isSuccessful }) else { return false }

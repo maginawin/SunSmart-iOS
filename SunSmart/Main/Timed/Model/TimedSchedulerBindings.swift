@@ -32,7 +32,7 @@ extension Node {
 
     /// Preserve captured task ownership before updating App state from a reply.
     @discardableResult
-    func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) -> Bool {
+    func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true, finalizeSchedulerBinding: Bool = true) -> Bool {
         guard handle.schedulerTask?.isCancelled != true else { return false }
         if let context = handle.timedSchedulerContext, !context.matches(node: self) { return false }
         if let context = handle.sceneContext {
@@ -63,30 +63,95 @@ extension Node {
                 return true
             }
         }
-        updateData(message: handle.message, isSuccess: isSuccess, model: handle.model)
+        updateData(message: handle.message, isSuccess: isSuccess, model: handle.model, finalizeSchedulerBinding: finalizeSchedulerBinding)
         return isSuccess
     }
 }
 
 extension Schedule {
+    #if DEBUG
+    private func traceSchedulerResult(on node: Node, stage: String, detail: String = "") {
+        let binding = nodeSlots?.first { $0.identity == node.timedSchedulerIdentity }
+        let models = node.schedulerSetupModels.map { model -> String in
+            let address = model.parentElement?.unicastAddress.hex ?? "none"
+            guard let entries = node.allSchedulerModelEntrys[model] else { return "\(address):unknown" }
+            let slots = entries.filter { $0.value.isValid }.keys.sorted().map(String.init).joined(separator: ",")
+            return "\(address):[\(slots)]"
+        }.joined(separator: ";")
+        print("[ScheduleResult] node=\(node.primaryUnicastAddress.hex) schedule=\(id) stage=\(stage) slot=\(binding.map { String($0.slot) } ?? "none") binding=\(binding.map { String(describing: $0.state) } ?? "none") proxyBusy=\(MeshProxyMessageCommand.shared.isBusy) models=\(models) \(detail)")
+    }
+    #endif
+
+    private func schedulerResultFailure(_ reason: String, on node: Node) -> Bool {
+        #if DEBUG
+        traceSchedulerResult(on: node, stage: "failed", detail: "reason=\(reason)")
+        #endif
+        return false
+    }
+
+    /// Accept receipts before applying progress can invalidate their send intent.
+    /// Keep the binding until every Model result has been applied and persisted.
+    func applySchedulerResults(_ results: [MeshMessageHandle], expected: [MeshMessageHandle], on node: Node) -> Bool {
+        let expectedIDs = Set(expected.map(ObjectIdentifier.init))
+        guard expectedIDs.count == expected.count, results.count == expected.count,
+              Set(results.map(ObjectIdentifier.init)) == expectedIDs else {
+            return schedulerResultFailure("receiptMembership", on: node)
+        }
+        guard !expected.contains(where: { $0.schedulerTask?.isCancelled == true }) else {
+            return schedulerResultFailure("cancelledBeforeApply", on: node)
+        }
+        let accepted = results.map { $0.isSuccessful }
+        #if DEBUG
+        let receipts = zip(results, accepted).map { handle, valid in
+            "task=\(handle.schedulerTask.map { String(describing: ObjectIdentifier($0)) } ?? "none"),accepted=\(valid),responses=\(handle.respondAddresss.count)/\(handle.allAddresss.count)"
+        }.joined(separator: ";")
+        traceSchedulerResult(on: node, stage: "accepted", detail: "expected=\(expected.count) returned=\(results.count) receipts=\(receipts)")
+        #endif
+        var applied = true
+        for (handle, successful) in zip(results, accepted) where successful {
+            if !node.applyMessageHandle(handle, finalizeSchedulerBinding: false) { applied = false }
+        }
+        node.clearSyncStateCache()
+        // Persist partial progress too, so retry only sends unfinished Models.
+        guard node.savePropertys() else { return schedulerResultFailure("nodeSave", on: node) }
+        guard applied else { return schedulerResultFailure("messageContext", on: node) }
+        guard accepted.allSatisfy({ $0 }) else { return schedulerResultFailure("receiptNotAccepted", on: node) }
+        guard !expected.contains(where: { $0.schedulerTask?.isCancelled == true }) else {
+            return schedulerResultFailure("cancelledDuringApply", on: node)
+        }
+        let persisted = reconcileBinding(on: node)
+        guard persisted else { return false } // Reconciliation logs its specific failure below.
+        guard !expected.contains(where: { $0.schedulerTask?.isCancelled == true }) else {
+            return schedulerResultFailure("cancelledDuringReconcile", on: node)
+        }
+        #if DEBUG
+        traceSchedulerResult(on: node, stage: "completed", detail: "accepted=\(accepted.filter { $0 }.count)")
+        #endif
+        return true
+    }
+
     /// A current result is complete only when every Model is known. A partial
     /// ACK must not turn an unknown Model into an observed empty register.
-    func reconcileBinding(on node: Node) {
-        guard selectTargetType != .profile, let identity = node.timedSchedulerIdentity,
-              let index = nodeSlots?.firstIndex(where: { $0.identity == identity }),
-              nodeSlots![index].isV3 else { return }
-        if nodeSlots![index].state == .pendingRemoval {
-            releaseClearedBinding(on: node)
-            return
+    @discardableResult
+    func reconcileBinding(on node: Node) -> Bool {
+        guard selectTargetType != .profile, !nodeSlotsLoadFailed,
+              let identity = node.timedSchedulerIdentity, let nodeSlots else {
+            return schedulerResultFailure("invalidBindingState", on: node)
+        }
+        guard let index = nodeSlots.firstIndex(where: { $0.identity == identity }) else { return true }
+        guard nodeSlots[index].isV3 else { return schedulerResultFailure("legacyBinding", on: node) }
+        if nodeSlots[index].state == .pendingRemoval {
+            return releaseClearedBinding(on: node)
         }
         let state: TimedSchedulerNodeSlot.State = targets(node: node)
-            && nodeSlots![index].actionAddress == node.timedActionAddress()
+            && nodeSlots[index].actionAddress == node.timedActionAddress()
             && schedulerSyncDifference(on: node) == .synchronized ? .synced : .pendingApply
-        guard nodeSlots![index].state != state else { return }
-        guard state != .synced || node.savePropertys() else { return }
+        guard nodeSlots[index].state != state else { return true }
+        guard state != .synced || node.savePropertys() else { return schedulerResultFailure("reconcileNodeSave", on: node) }
         let previous = nodeSlots
-        nodeSlots![index].state = state
-        if !save() { nodeSlots = previous }
+        self.nodeSlots![index].state = state
+        guard save() else { self.nodeSlots = previous; return schedulerResultFailure("reconcileScheduleSave", on: node) }
+        return true
     }
     var activeSceneGroups: [Group] {
         guard let scene, !scene.info.configurationLoadFailed,
@@ -143,16 +208,24 @@ extension Schedule {
         if !save() { needDeleteSceneNumbers = previous }
     }
 
-    func releaseClearedBinding(on node: Node) {
-        guard selectTargetType != .profile else { return }
-        guard !MeshProxyMessageCommand.shared.isBusy,
-              let identity = node.timedSchedulerIdentity, let slot = slot(on: node),
-              deletionIsSynchronized(on: node),
-              nodeSlots?.contains(where: { $0.identity == identity && $0.slot == slot && $0.state == .pendingRemoval }) == true else { return }
-        guard node.savePropertys() else { return }
+    @discardableResult
+    func releaseClearedBinding(on node: Node) -> Bool {
+        guard selectTargetType != .profile else { return schedulerResultFailure("protectedProfile", on: node) }
+        guard !MeshProxyMessageCommand.shared.isBusy else { return schedulerResultFailure("proxyBusy", on: node) }
+        guard let identity = node.timedSchedulerIdentity, let slot = slot(on: node) else {
+            return schedulerResultFailure("missingIdentityOrSlot", on: node)
+        }
+        guard deletionIsSynchronized(on: node) else {
+            return schedulerResultFailure(node.observedTimedSlots == nil ? "unknownModels" : "slotStillOccupied", on: node)
+        }
+        guard nodeSlots?.contains(where: { $0.identity == identity && $0.slot == slot && $0.state == .pendingRemoval }) == true else {
+            return schedulerResultFailure("notPendingRemoval", on: node)
+        }
+        guard node.savePropertys() else { return schedulerResultFailure("releaseNodeSave", on: node) }
         let previous = nodeSlots
         nodeSlots?.removeAll { $0.identity == identity && $0.slot == slot }
-        if !save() { nodeSlots = previous }
+        guard save() else { nodeSlots = previous; return schedulerResultFailure("releaseScheduleSave", on: node) }
+        return true
     }
 }
 
@@ -379,8 +452,43 @@ enum TimedSchedulerBindings {
         } catch { return false }
     }
 
+    /// Persist user intent and its upload revision together. Device observations
+    /// and ordinary preparation use commit's default, without publishing intent.
+    static func withLocalChange(_ changes: () throws -> Void) throws {
+        let manager = MeshNetworkManager.instance
+        guard let meshUUID = manager.meshNetwork?.uuid.uuidString,
+              SunSmartDataManager.shared.db != nil else { throw Failure.staleNetwork }
+        let networkID = manager.currentNetworkKey.networkId.hex
+        guard let space = SpaceData.load(subNetworkId: networkID), space.meshUUID == meshUUID else {
+            throw Failure.staleNetwork
+        }
+        func storedConfiguration() throws -> Data {
+            let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: networkID)
+            let encoder = JSONEncoder()
+            var rows = try JSONSerialization.jsonObject(with: encoder.encode(schedules)) as! [[String: Any]]
+            for index in rows.indices {
+                if let slots = rows[index]["nodeSlots"] as? [[String: Any]] {
+                    rows[index]["nodeSlots"] = slots.sorted {
+                        let lhs = $0["identity"] as? [String: Any], rhs = $1["identity"] as? [String: Any]
+                        return (lhs?["nodeUUID"] as? String ?? "") < (rhs?["nodeUUID"] as? String ?? "")
+                    }
+                }
+            }
+            rows.sort { ($0["id"] as? Int ?? -1) < ($1["id"] as? Int ?? -1) }
+            return try JSONSerialization.data(withJSONObject: rows, options: .sortedKeys)
+        }
+        let saved = SunSmartDataManager.shared.configurationTransaction {
+            let before = try storedConfiguration()
+            try changes()
+            guard before != (try storedConfiguration()) else { return }
+            space.markLocalChangePendingCloudSync()
+            guard space.save() else { throw Failure.persistence }
+        }
+        guard saved else { throw Failure.persistence }
+    }
+
     /// Persist the complete reservation before any device message is constructed.
-    static func commit(_ plan: Plan, applying changes: () throws -> Void = {}) throws {
+    static func commit(_ plan: Plan, markCloudChange: Bool = false, applying changes: () throws -> Void = {}) throws {
         let manager = MeshNetworkManager.instance
         guard manager.meshNetwork?.uuid.uuidString == plan.meshUUID,
               manager.currentNetworkKey.networkId.hex == plan.networkID,
@@ -393,29 +501,33 @@ enum TimedSchedulerBindings {
             guard !SpaceConfigurationSafety.needsTimedUpgradeBaseline(space) else { throw Failure.persistence }
         }
         do {
-            try db.savepoint {
-                for schedule in plan.schedules {
-                    schedule.nodeSlots = plan.bindings[schedule.id] ?? []
-                    for binding in schedule.nodeSlots! where binding.state == .synced {
-                        guard let node = manager.realNodes.first(where: { $0.timedSchedulerIdentity == binding.identity }),
-                              node.savePropertys() else { throw Failure.persistence }
+            func persist() throws {
+                try db.savepoint {
+                    for schedule in plan.schedules {
+                        schedule.nodeSlots = plan.bindings[schedule.id] ?? []
+                        for binding in schedule.nodeSlots! where binding.state == .synced {
+                            guard let node = manager.realNodes.first(where: { $0.timedSchedulerIdentity == binding.identity }),
+                                  node.savePropertys() else { throw Failure.persistence }
+                        }
+                        schedule.needDeleteNodeAddresses = []
+                        schedule.needDeleteGroupAddresses = []
+                        schedule.needDeleteSceneNumbers = []
+                        guard schedule.save(meshUUID: plan.meshUUID, meshNetworkId: plan.networkID) else {
+                            throw Failure.persistence
+                        }
                     }
-                    schedule.needDeleteNodeAddresses = []
-                    schedule.needDeleteGroupAddresses = []
-                    schedule.needDeleteSceneNumbers = []
-                    guard schedule.save(meshUUID: plan.meshUUID, meshNetworkId: plan.networkID) else {
-                        throw Failure.persistence
+                    if !plan.schedules.isEmpty {
+                        guard let space = SpaceData.load(subNetworkId: plan.networkID), space.meshUUID == plan.meshUUID else {
+                            throw Failure.staleNetwork
+                        }
+                        space.timedSchemaVersion = 3
+                        guard space.save() else { throw Failure.persistence }
                     }
+                    try changes()
                 }
-                if !plan.schedules.isEmpty {
-                    guard let space = SpaceData.load(subNetworkId: plan.networkID), space.meshUUID == plan.meshUUID else {
-                        throw Failure.staleNetwork
-                    }
-                    space.timedSchemaVersion = 3
-                    guard space.save() else { throw Failure.persistence }
-                }
-                try changes()
             }
+            if markCloudChange { try withLocalChange(persist) }
+            else { try persist() }
         } catch {
             for (schedule, old) in zip(plan.schedules, previous) {
                 schedule.nodeSlots = old.0

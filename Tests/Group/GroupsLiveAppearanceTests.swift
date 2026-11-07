@@ -36,6 +36,10 @@ private class UIViewController {
     func viewWillDisappear(_ animated: Bool) {}
     func viewDidLayoutSubviews() {}
 }
+private struct MeshNodeHeartbeatManager {
+    static let shared = Self()
+    func refreshOfflineNodes() {}
+}
 
 private func SCRYFrom(_ value: CGFloat) -> CGFloat { value }
 private struct SceneInsets { var left: CGFloat = 0, right: CGFloat = 0, top: CGFloat = 0, bottom: CGFloat = 0 }

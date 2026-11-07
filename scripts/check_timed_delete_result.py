@@ -3,6 +3,9 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
+sys.dont_write_bytecode = True
+from check_scene_configuration import function
 root = Path(__file__).resolve().parents[1]
 source = (root / 'SunSmart/Main/Timed/Model/ScheduleServer.swift').read_text()
 start = source.index('    private static func runScheduleDeviceBatches(')
@@ -12,7 +15,12 @@ import Foundation
 final class Node {
     var cleared = false
     var timeModel: Model? = nil
-    func applyMessageHandle(_ handle: MeshMessageHandle) { if !handle.ignoreReply { cleared = true } }
+    func applyMessageHandle(_ handle: MeshMessageHandle, finalizeSchedulerBinding: Bool = true) -> Bool {
+        if !handle.ignoreReply { cleared = true }
+        return !handle.ignoreReply
+    }
+    func savePropertys() -> Bool { true }
+    func clearSyncStateCache() {}
 }
 final class Element { let unicastAddress: UInt16 = 1 }
 final class Model { var parentElement: Element? = Element() }
@@ -23,13 +31,15 @@ enum TimedSchedulerTaskCoordinator {
     static func finish(_ operation: Operation) { operation.isCurrent = false }
 }
 final class MeshMessageHandle {
+    var transmissionIsValid: (() -> Bool)?
     var schedulerTask: MeshSchedulerTask?
     var address: UInt16? = 1, model: Model? = nil
     var isSuccessful = true, continuous = true, ignoreReply = false
     var message = "delete"
 }
 final class Schedule {
-    func reconcileBinding(on node: Node) {} // Persistence is covered by the SQLite fixture.
+    func reconcileBinding(on node: Node) -> Bool { true } // Real persistence uses the SQLite suite.
+    RESULTS
     var enabled = false, failReservation = false, ignoreReply = false
     func slot(on node: Node) -> Int? { 0 }
     func deletionIsSynchronized(on node: Node) -> Bool { node.cleared }
@@ -53,9 +63,9 @@ final class MeshNetworkManager {
 final class MeshProxyMessageCommand {
     static let shared = MeshProxyMessageCommand()
     func addMessage(messageHandles: [MeshMessageHandle], progressBack: ((Int) -> Void)?,
-        successfulBack: (MeshMessageHandle, Int) -> Void, failedBack: (MeshMessageHandle) -> Void,
+        successfulBack: ((MeshMessageHandle, Int) -> Void)?, failedBack: (MeshMessageHandle) -> Void,
         finishedBack: ([MeshMessageHandle]) -> Void) {
-        messageHandles.forEach { successfulBack($0, 0) }
+        messageHandles.forEach { successfulBack?($0, 0) }
         finishedBack(messageHandles)
     }
 }
@@ -83,7 +93,9 @@ METHODS
         print("PASS: production deletion batch preserves records on reservation failure or stale reply, completes verified clearing")
     }
 }
-'''.replace('METHODS', methods)
+'''.replace('METHODS', methods).replace('RESULTS', '\n'.join(function(
+    (root / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text(), marker)
+    for marker in ['    func applySchedulerResults(', '    private func schedulerResultFailure(']))
 with tempfile.TemporaryDirectory(prefix='timed-delete-') as directory:
     path = Path(directory)
     (path / 'Harness.swift').write_text(fixture)

@@ -5,6 +5,7 @@ import Foundation
 // inserts each picker's production observer, refresh and cancellation bodies;
 // snapshot reads run through the production reader without Scheduler updates.
 private let sceneDataUpdateNotificationName = "sceneDataUpdate"
+private let deviceStateUpdateNotificationName = "deviceStateUpdate"
 private enum UIApplication {
     static let didBecomeActiveNotification = Notification.Name("UIApplicationDidBecomeActiveNotification")
 }
@@ -13,6 +14,9 @@ private enum SpaceSchedulerReadCoordinator {
 }
 private struct PickerFilterSession {
     func removeObserver(_ token: UUID) {}
+}
+private struct PickerCollectionView {
+    func reloadData() {}
 }
 private protocol PickerForegroundProbe: AnyObject {
     init(schedule: Schedule?)

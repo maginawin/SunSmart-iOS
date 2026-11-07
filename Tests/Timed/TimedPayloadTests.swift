@@ -137,10 +137,52 @@ import Foundation
         local["nodes"] = nodes
         precondition(TimedSchedulerPayloadPolicy.exportPayload(local) == nil, "never rebind to a reused address")
         for field in ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"] {
-            var invalid = value, badRow = row
-            badRow[field] = [String]()
-            invalid["schedules"] = [badRow]
-            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
+            for extra: Any in [[], ["FFFF"], NSNull(), "legacy", 42, ["unknown": true]] {
+                var mixed = value, mixedRow = row
+                mixedRow[field] = extra
+                mixed["schedules"] = [mixedRow]
+                precondition(TimedSchedulerPayloadPolicy.canonical(mixed) == canonical)
+                precondition(TimedSchedulerPayloadPolicy.decodingSchedules(mixed)![0][field] == nil,
+                             "retired cleanup fields must not reach the Schedule decoder")
+            }
+        }
+        for extra: Any in [[], [["id": 4]], NSNull(), "legacy", 42, ["schemaVersion": 99]] {
+            var mixed = value, mixedNodes = value["nodes"] as! [[String: Any]]
+            mixedNodes[0]["schedules"] = extra
+            mixedNodes[0]["custProps"] = ["schedulerModelStates": extra, "keep": 7]
+            mixed["nodes"] = mixedNodes
+            let normalized = TimedSchedulerPayloadPolicy.repairingStaleBindings(mixed)!
+            let normalizedNode = (normalized["nodes"] as! [[String: Any]])[0]
+            precondition(normalizedNode["schedules"] == nil)
+            precondition((normalizedNode["custProps"] as! [String: Any])["schedulerModelStates"] == nil)
+            precondition((normalizedNode["custProps"] as! [String: Any])["keep"] as? Int == 7)
+            precondition(TimedSchedulerPayloadPolicy.canonical(mixed) == canonical)
+            precondition(TimedSchedulerPayloadPolicy.canonical(TimedSchedulerPayloadPolicy.backupPayload(
+                TimedSchedulerPayloadPolicy.backupEnvelope(mixed)!)!) == canonical)
+            precondition(NSDictionary(dictionary: normalized).isEqual(to: TimedSchedulerPayloadPolicy.fillingMissingBindings(normalized)))
+        }
+        for location in ["binding", "identity", "actionAddress"] {
+            var mixed = value, mixedRow = row
+            var bindings = row["nodeSlots"] as! [[String: Any]]
+            if location == "binding" { bindings[0]["serverOnly"] = ["anything": NSNull()] }
+            else {
+                var nested = bindings[0][location] as! [String: Any]
+                nested["serverOnly"] = ["anything": NSNull()]
+                if location == "identity" {
+                    nested["nodeUUID"] = "obsolete"
+                    nested["deviceKeyFingerprint"] = 42
+                }
+                bindings[0][location] = nested
+            }
+            mixedRow["nodeSlots"] = bindings; mixed["schedules"] = [mixedRow]
+            precondition(TimedSchedulerPayloadPolicy.canonical(mixed) == canonical)
+            let decoded = TimedSchedulerPayloadPolicy.decodingSchedules(mixed)!
+            let local = try! JSONDecoder().decode([TimedSchedulerNodeSlot].self,
+                from: JSONSerialization.data(withJSONObject: decoded[0]["nodeSlots"]!))
+            precondition(local[0].identity.nodeUUID == uuid, "only the complete Node supplies the local identity")
+            var invalid = mixed, invalidRow = mixedRow
+            bindings[0]["slot"] = true; invalidRow["nodeSlots"] = bindings; invalid["schedules"] = [invalidRow]
+            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil, "extras never hide invalid required data")
         }
         for state in ["assigned", "unknown", "", "pendingRemoval", "synced"] {
             var candidate = value, candidateRow = row

@@ -454,7 +454,8 @@ class ScenesViewController: UIViewController {
     }
     
     private func reloadCollectionItem(scene: Scene) {
-        guard !DeviceEmerFireData.reservedSceneNumbers.contains(scene.number) else {
+        guard scene.network?.uuid.uuidString == space.meshUUID, scene.subNetworkId == space.meshNetworkId,
+              !DeviceEmerFireData.reservedSceneNumbers.contains(scene.number) else {
             return
         }
         let latestScenes = visibleScenes

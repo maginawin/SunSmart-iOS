@@ -51,6 +51,22 @@ import SQLite3
             "spaceData": ["hdb": try HDBLightingZonePolicy.json(reloaded)]]
         precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(
             SpaceConfigurationIntegrityPolicy.configurationData(reexported), receipt))
+        var legacyExtras = object
+        var extraZones = legacyExtras["lightingZones"] as! [[String: Any]]
+        extraZones[0]["groupAddress"] = ["ignored": true]
+        legacyExtras["lightingZones"] = extraZones
+        var extraDevices = legacyExtras["devices"] as! [[String: Any]]
+        var extraFields = extraDevices[0]["lightingConfiguration"] as! [String: Any]
+        var extraControl = extraFields["lightingControl"] as! [String: Any]
+        extraControl["mapValues"] = "ignored"; extraFields["lightingControl"] = extraControl
+        extraDevices[0]["lightingConfiguration"] = extraFields; legacyExtras["devices"] = extraDevices
+        let extraPayload: [String: Any] = ["groups": [[String: Any]](), "nodes": [[String: Any]](),
+            "spaceData": ["hdb": legacyExtras]]
+        precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(
+            SpaceConfigurationIntegrityPolicy.configurationData(extraPayload), receipt))
+        let extraDecoded = try HDBLightingZonePolicy.decode(payload: extraPayload)!
+        precondition(extraDecoded == config)
+        try sqliteRoundTrip(extraDecoded, path: CommandLine.arguments[1] + "-unused-extras")
         for zone: [String: Any] in [
             ["zoneId": 1, "name": "One", "groupAddress": 49152],
             ["zoneId": 1, "name": "One", "groupId": 49152],

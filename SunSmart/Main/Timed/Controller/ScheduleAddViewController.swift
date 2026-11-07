@@ -248,7 +248,7 @@ class ScheduleAddViewController: UIViewController {
         guard resolveSchedulerState(nodes: schedule.existNodes, retry: { [weak self] in self?.saveBtnAction() }) else { return }
         do {
             try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(
-                schedules: MeshNetworkManager.instance.schedules + [schedule]))
+                schedules: MeshNetworkManager.instance.schedules + [schedule]), markCloudChange: true)
         } catch {
             TimedSchedulerBindings.showFailure(error)
             return
@@ -267,10 +267,10 @@ class ScheduleAddViewController: UIViewController {
             $0.info.bindSchedules.append(schedule)
         })
         
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.syncResult(changed: false))
         if needSync { // 是否需要同步
             pushToSyncDevices(schedule: schedule)
         }else {
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()
@@ -291,7 +291,11 @@ class ScheduleAddViewController: UIViewController {
         }
 
         guard schedule.existNodes.count > 0 else {
-            guard schedule.deleteData() else {
+            do {
+                try TimedSchedulerBindings.withLocalChange {
+                    guard schedule.deleteData() else { throw TimedSchedulerBindings.Failure.persistence }
+                }
+            } catch {
                 XWHUDManager.showErrorTipHUD("schedule_delete_failed".localizedString)
                 return
             }
@@ -299,7 +303,7 @@ class ScheduleAddViewController: UIViewController {
             for group in MeshNetworkManager.instance.groups {
                 group.info.bindSchedules.removeAll { $0.id == schedule.id }
             }
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.syncResult(changed: false))
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
@@ -451,7 +455,7 @@ class ScheduleAddViewController: UIViewController {
         guard let index = candidates.firstIndex(where: { $0.id == original.id }) else { return }
         candidates[index] = schedule
         do {
-            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates))
+            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates), markCloudChange: true)
         } catch {
             TimedSchedulerBindings.showFailure(error)
             return
@@ -471,11 +475,11 @@ class ScheduleAddViewController: UIViewController {
             node.clearSyncStateCache()
         }
         
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.syncResult(changed: false))
         // 判断需要同步设备数据
         if !schedule.getNeedSyncDatas().isEmpty() {
             pushToSyncDevices(schedule: schedule)
         }else { // 无需同步，仅编辑名称参数不影响设备配置
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()

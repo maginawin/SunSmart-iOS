@@ -82,6 +82,25 @@ final class Node {
         let payload = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let nodes = payload["nodes"] as! [[String: Any]]
         let original = try (0..<70).map(Self.fixture)
+        for extra: Any in [original[2]["schedules"]!, "unused", NSNull(), ["invalid": true]] {
+            var historical = original[2]
+            historical["schedules"] = extra
+            historical["custProps"] = ["schedulerModelStates": extra]
+            let remote: [String: Any] = ["spaceData": ["timedSchemaVersion": 3], "schedules": [], "nodes": [historical]]
+            let normalized = CloudConfigurationDefaults.space(remote)
+            let nodeData = (normalized["nodes"] as! [[String: Any]])[0]
+            let fresh = Node(nodeData)
+            precondition(fresh.restoreSchedulerModelSnapshot(nodeData: nodeData))
+            precondition(fresh.allSchedulerModelEntrys.isEmpty && fresh.schedulerActions.isEmpty)
+            precondition(fresh.matchesSchedulerModelSnapshot(nodeData: nodeData))
+            fresh.schedulerActions = [0: entry(0)]
+            fresh.allSchedulerModelEntrys[fresh.schedulerSetupModels[0]] = fresh.schedulerActions
+            precondition(fresh.restoreSchedulerModelSnapshot(nodeData: nodeData))
+            precondition(fresh.schedulerActions.count == 1 && fresh.allSchedulerModelEntrys.count == 1,
+                         "ignored server observations must not replace known local observations")
+            precondition(SchedulerModelSnapshot.spaceData(remote) == SchedulerModelSnapshot.omittedComparison)
+        }
+        print("PASS: v3 legacy observations never reach restore; unknown and known local caches remain unchanged")
         precondition(SchedulerModelSnapshot.spaceData(payload) == SchedulerModelSnapshot.spaceData(["nodes": original]))
         var knownEmpty = 0, populated = 0
         for json in nodes {

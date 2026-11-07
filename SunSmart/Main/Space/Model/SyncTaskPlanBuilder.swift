@@ -50,26 +50,34 @@ final class SyncTaskPlanBuilder {
 
         switch self.type {
         case .group(let group, let inNodes, let outNodes):
-            let currentNodes = group.nodes
-            let remainingNodes = currentNodes.filter { node in
-                !(outNodes?.contains(node) ?? false)
+            func uniqueNodes(_ nodes: [Node]) -> [Node] {
+                var addresses = Set<Address>()
+                return nodes.filter { addresses.insert($0.primaryUnicastAddress).inserted }
             }
-            let addedNodes = (inNodes ?? []).filter { node in
-                !remainingNodes.contains(node)
-            }
+            // A subscription ACK may put an inNode into group.nodes before retry
+            // planning. Keep the operation inputs, but give each node one owner.
+            let currentNodes = uniqueNodes(group.nodes)
+            let exitingNodes = uniqueNodes(outNodes ?? [])
+            let exitingAddresses = Set(exitingNodes.map(\.primaryUnicastAddress))
+            let joiningNodes = uniqueNodes(inNodes ?? []).filter { !exitingAddresses.contains($0.primaryUnicastAddress) }
+            let joiningAddresses = Set(joiningNodes.map(\.primaryUnicastAddress))
+            let remainingNodes = currentNodes.filter { !exitingAddresses.contains($0.primaryUnicastAddress) }
+            let remainingAddresses = Set(remainingNodes.map(\.primaryUnicastAddress))
+            let addedNodes = joiningNodes.filter { !remainingAddresses.contains($0.primaryUnicastAddress) }
+            let addedAddresses = Set(addedNodes.map(\.primaryUnicastAddress))
             let effectiveMemberCount = remainingNodes.count + addedNodes.count
             let profileSyncContext = (inNodes == nil && outNodes == nil) ? groupProfileSyncContext : nil
             let addedMemberProfileSyncContext: GroupProfileSyncContext? = addedNodes.isEmpty ? nil : .init(reason: .memberAdded)
 
-            outNodes?.forEach({ node in
+            exitingNodes.forEach({ node in
                 let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
                 if let removceDevice = result.removeDevice {
                     removeSection.devices.append(removceDevice)
                 }
             })
 
-            inNodes?.forEach({ node in
-                let memberProfileSyncContext = addedNodes.contains(node) ? addedMemberProfileSyncContext : nil
+            joiningNodes.forEach({ node in
+                let memberProfileSyncContext = addedAddresses.contains(node.primaryUnicastAddress) ? addedMemberProfileSyncContext : nil
                 let result = self.getSyncDeviceModel(
                     group: group,
                     node: node,
@@ -84,7 +92,7 @@ final class SyncTaskPlanBuilder {
                 }
             })
 
-            group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
+            remainingNodes.filter { !joiningAddresses.contains($0.primaryUnicastAddress) }.forEach { node in
                 let result = self.getSyncDeviceModel(
                     group: group,
                     node: node,
@@ -106,9 +114,9 @@ final class SyncTaskPlanBuilder {
                     configurationSection.devices.append(postTargetStateDevice)
                 }
             }
-            emergencyBuilder.appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: inNodes ?? [], exitNodes: outNodes ?? [])
+            emergencyBuilder.appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: joiningNodes, exitNodes: exitingNodes)
             let coveredAddresses = Set(
-                (group.nodes + (inNodes ?? []) + (outNodes ?? []))
+                (currentNodes + joiningNodes + exitingNodes)
                     .map(\.primaryUnicastAddress)
             )
             proximityBuilder.appendProximityLightingItems(

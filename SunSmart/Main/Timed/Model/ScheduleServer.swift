@@ -41,7 +41,7 @@ struct ScheduleServer {
                 schedule.enabled = previousEnabled; failed?(schedule); return
             }
             candidates[index] = schedule
-            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates))
+            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates), markCloudChange: true)
         } catch {
             schedule.enabled = previousEnabled
             failed?(schedule)
@@ -71,7 +71,17 @@ struct ScheduleServer {
                 // First-use slot reservation may already have saved the attempted
                 // value. Roll back the business field while retaining the slots.
                 if meshUUID != nil {
-                    schedule.save(meshUUID: meshUUID, meshNetworkId: networkID)
+                    do {
+                        try TimedSchedulerBindings.withLocalChange {
+                            guard schedule.save(meshUUID: meshUUID, meshNetworkId: networkID) else {
+                                throw TimedSchedulerBindings.Failure.persistence
+                            }
+                        }
+                    } catch {
+                        // Retain the committed intent if the rollback could not
+                        // be persisted; a later repair must see the same value.
+                        schedule.enabled = enabled
+                    }
                 }
             }
             failed?(schedule)
@@ -127,7 +137,11 @@ struct ScheduleServer {
             pending.state = .pendingRemoval
             return pending
         }
-        guard schedule.save() else {
+        do {
+            try TimedSchedulerBindings.withLocalChange {
+                guard schedule.save() else { throw TimedSchedulerBindings.Failure.persistence }
+            }
+        } catch {
             schedule.action = previous.action
             schedule.nodeAddresses = previous.nodeAddresses
             schedule.groupAddresses = previous.groupAddresses
@@ -317,7 +331,8 @@ struct ScheduleServer {
         let batch = batches[index]
         guard let messageHandles = makeScheduleMessageHandles(
             schedule: schedule,
-            batch: batch
+            batch: batch,
+            operation: operation
         ) else {
             runScheduleDeviceBatches(
                 batches,
@@ -330,7 +345,7 @@ struct ScheduleServer {
             return
         }
         guard !messageHandles.isEmpty else {
-            schedule.reconcileBinding(on: batch.node)
+            let applied = schedule.applySchedulerResults([], expected: [], on: batch.node)
             let synchronized = batch.delete
                 ? schedule.deletionIsSynchronized(on: batch.node)
                 : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
@@ -339,29 +354,23 @@ struct ScheduleServer {
                 schedule: schedule,
                 operation: operation,
                 index: index + 1,
-                hadFailure: hadFailure || !synchronized,
+                hadFailure: hadFailure || !applied || !synchronized,
                 completion: completion
             )
             return
         }
 
-        MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { messageHandle, _ in
-            if let address = messageHandle.address ?? messageHandle.model?.parentElement?.unicastAddress, 
-                let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                node.applyMessageHandle(messageHandle)
-            }
-            
-        } failedBack: { messageHandle in
+        MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil, successfulBack: nil, failedBack: { messageHandle in
             #if DEBUG
             print("node send message failed \(messageHandle.message)")
             #endif
-        } finishedBack: { resultMessageHandles in
+        }, finishedBack: { resultMessageHandles in
             guard operation.isCurrent else { return }
             guard !resultMessageHandles.contains(where: { $0.schedulerTask?.isCancelled == true }) else {
                 TimedSchedulerTaskCoordinator.finish(operation)
                 return
             }
-            schedule.reconcileBinding(on: batch.node)
+            let applied = schedule.applySchedulerResults(resultMessageHandles, expected: messageHandles, on: batch.node)
             let synchronized = batch.delete
                 ? schedule.deletionIsSynchronized(on: batch.node)
                 : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
@@ -370,15 +379,16 @@ struct ScheduleServer {
                 schedule: schedule,
                 operation: operation,
                 index: index + 1,
-                hadFailure: hadFailure || !synchronized || resultMessageHandles.contains(where: { !$0.isSuccessful }),
+                hadFailure: hadFailure || !applied || !synchronized,
                 completion: completion
             )
-        }
+        })
     }
 
     private static func makeScheduleMessageHandles(
         schedule: Schedule,
-        batch: ScheduleDeviceBatch
+        batch: ScheduleDeviceBatch,
+        operation: TimedSchedulerTaskCoordinator.Operation
     ) -> [MeshMessageHandle]? {
         if batch.delete {
             guard TimedSchedulerBindings.reserveForDeletion(schedule: schedule, node: batch.node) else { return nil }
@@ -401,6 +411,8 @@ struct ScheduleServer {
                   ) else {
                 return nil
             }
+            let valid = timeHandle.transmissionIsValid
+            timeHandle.transmissionIsValid = { operation.isCurrent && (valid?() ?? true) }
             timeHandle.continuous = false
             messageHandles.append(timeHandle)
         }

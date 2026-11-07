@@ -425,11 +425,15 @@ import Foundation
             zone["groupId"] = value
             do { _ = try decode(zone); fatalError("invalid groupId accepted") } catch {}
         }
-        for includeNew in [false, true] {
-            var zone: [String: Any] = ["zoneId": 1, "name": "One", "groupAddress": 49153]
-            if includeNew { zone["groupId"] = "C001" }
-            do { _ = try decode(zone); fatalError("legacy or mixed groupAddress accepted") } catch HDBConfigurationError.invalidData {}
+        for legacy: Any in [49153, "FFFF", NSNull(), ["unused": true]] {
+            var zone: [String: Any] = ["zoneId": 1, "name": "One", "groupAddress": legacy, "groupId": "C002"]
+            let decoded = try decode(zone)
+            precondition(decoded.lightingZones[0].groupAddress == 0xC002)
+            let exported = try HDBLightingZonePolicy.json(decoded)
+            precondition((exported["lightingZones"] as! [[String: Any]])[0]["groupAddress"] == nil)
+            zone.removeValue(forKey: "groupId")
+            do { _ = try decode(zone); fatalError("legacy field must not supply a missing required groupId") } catch {}
         }
-        print("PASS: groupId hex round trip, existing address ranges/references, legacy/mixed keys and malformed input rejection")
+        print("PASS: groupId hex round trip, address ranges/references, unused legacy alias tolerance and required-field rejection")
     }
 }

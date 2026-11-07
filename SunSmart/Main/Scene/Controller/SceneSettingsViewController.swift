@@ -829,6 +829,11 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
         let finish = { [weak self, weak returnController] in
             guard let self, !didFinish else { return }
             didFinish = true
+            // The list may stay on screen beneath the editor and still show the pre-sync snapshot.
+            let manager = MeshNetworkManager.instance
+            if manager.scenes.contains(where: { $0 === saved }), saved.subNetworkId == manager.currentNetworkKey.networkId.hex {
+                NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: saved)
+            }
             if self.scene == nil || self.finishesCreation { self.finishCreation() }
             else if let returnController {
                 self.navigationController?.popToViewController(returnController, animated: true)

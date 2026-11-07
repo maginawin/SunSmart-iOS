@@ -45,10 +45,9 @@ struct HDBLightingZone: Codable, Equatable {
 }
 
 extension HDBLightingZone {
-    private enum CodingKeys: String, CodingKey { case zoneId, name, groupId, groupAddress }
+    private enum CodingKeys: String, CodingKey { case zoneId, name, groupId }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        guard !c.contains(.groupAddress) else { throw HDBConfigurationError.invalidData }
         zoneId = try c.decode(Int.self, forKey: .zoneId)
         name = try c.decode(String.self, forKey: .name)
         groupAddress = try c.decode(HDBHexUInt16.self, forKey: .groupId).value
@@ -656,9 +655,8 @@ extension HDBLightingConfiguration {
         init?(stringValue: String) { self.init(stringValue) }
         init?(intValue: Int) { return nil }
     }
-    private enum MetadataKey: String, CodingKey, CaseIterable {
-        case elementAddress, modelId, property, mapValues, models, value
-        case auto = "Auto", forceOn = "Force_On", forceOff = "Force_Off"
+    private enum MetadataKey: String, CodingKey {
+        case elementAddress, modelId, property
     }
 
     func encode(to encoder: Encoder, models: [HDBModelTarget], primaryAddress: UInt16) throws {
@@ -702,26 +700,19 @@ extension HDBLightingConfiguration {
             if name == "lightingControl" {
                 let mappings = try field.container(keyedBy: FieldKey.self)
                 let required = Set(HDBLightingControl.allCases.map(\.rawValue)).union(["status", "value"])
-                guard Set(mappings.allKeys.map(\.stringValue)) == required else { throw HDBConfigurationError.invalidData }
+                guard required.isSubset(of: Set(mappings.allKeys.map(\.stringValue))) else { throw HDBConfigurationError.invalidData }
                 for control in HDBLightingControl.allCases {
                     guard try mappings.decodeIfPresent(HDBHexUInt16.self, forKey: FieldKey(control.rawValue))?.value
                         == control.write.target(in: models, primaryAddress: primaryAddress)?.elementAddress else { throw HDBConfigurationError.invalidData }
                 }
             } else if let property = HDBLightingProperty(rawValue: name) {
-                try reject([.mapValues, .models, .auto, .forceOn, .forceOff], in: metadata)
                 let write = HDBLightingWrite.property(property.identifier, 0)
                 guard metadata.contains(.elementAddress),
                       try metadata.decodeIfPresent(HDBHexUInt16.self, forKey: .elementAddress)?.value == write.target(in: models, primaryAddress: primaryAddress)?.elementAddress,
                       try metadata.decode(HDBHexUInt16.self, forKey: .modelId).value == write.modelIdentifier,
                       try metadata.decode(HDBHexUInt16.self, forKey: .property).value == property.identifier else { throw HDBConfigurationError.invalidData }
-            } else {
-                try reject(MetadataKey.allCases.filter { $0 != .value }, in: metadata)
             }
         }
         return result
-    }
-
-    private static func reject(_ keys: [MetadataKey], in container: KeyedDecodingContainer<MetadataKey>) throws {
-        guard !keys.contains(where: container.contains) else { throw HDBConfigurationError.invalidData }
     }
 }

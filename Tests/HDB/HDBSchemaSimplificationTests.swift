@@ -78,8 +78,24 @@ import Foundation
                 try rejected { fields in var item = control; item[name] = value; fields["lightingControl"] = item }
             }
         }
-        for key in ["mapValues", "Extra", "elementAddress", "modelId", "property", "models"] {
-            try rejected { fields in var item = control; item[key] = [:]; fields["lightingControl"] = item }
+        for (name, extras) in [
+            ("lightingControl", ["mapValues", "Extra", "elementAddress", "modelId", "property", "models"]),
+            ("brightIntensity", ["mapValues", "Extra", "models", "Auto", "Force_On", "Force_Off"]),
+            ("failsafeDelay", ["elementAddress", "modelId", "property", "mapValues", "models", "Auto"]),
+            ("installDate", ["elementAddress", "modelId", "property", "mapValues", "models", "Auto"])
+        ] {
+            for extra: Any in [[:], ["obsolete": true], NSNull(), "unused", 42] {
+                var edited = fields, item = fields[name] as! [String: Any]
+                for key in extras { item[key] = extra }
+                edited[name] = item
+                var payload = json; payload["lightingConfiguration"] = edited
+                let decoded = try JSONDecoder().decode(HDBDeviceConfiguration.self,
+                    from: JSONSerialization.data(withJSONObject: payload))
+                precondition(decoded == normalized, "unused metadata cannot affect business values or routing")
+                let reexported = try object(decoded), expected = try object(normalized)
+                precondition(NSDictionary(dictionary: reexported).isEqual(to: expected),
+                             "export still contains only current fields")
+            }
         }
         // Lowercase wire addresses and Property IDs normalize without changing state.
         var lowerFields = fields, lowerControl = control
@@ -91,7 +107,6 @@ import Foundation
         var lowerPayload = json; lowerPayload["lightingConfiguration"] = lowerFields
         let lowerDecoded = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: lowerPayload))
         precondition(lowerDecoded == normalized)
-        try rejected { fields in var item = fields["failsafeDelay"] as! [String: Any]; item["modelId"] = 4880; fields["failsafeDelay"] = item }
         device.zoneModels = []
         let empty = try object(device)["lightingConfiguration"] as! [String: Any]
         precondition((empty["brightIntensity"] as! [String: Any])["elementAddress"] is NSNull)
@@ -114,7 +129,7 @@ import Foundation
         device.lightingConfiguration = nil
         let nullConfiguration = try object(device)
         precondition(nullConfiguration["lightingConfiguration"] is NSNull)
-        print("PASS: per-device command metadata, first targets, strict mappings, legacy rejection, metadata-only fields and null targets")
+        print("PASS: required command mappings, unused metadata tolerance, compact export and null targets")
     }
 
 }
