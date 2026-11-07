@@ -2448,7 +2448,11 @@ extension SpaceData {
                 self.triggerZones = []
             }
             //            }
-//            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
+            // Capture before forceRemove deletes the old property rows. v3 cloud
+            // data omits observations, so rebuilding Nodes must retain local ACKs.
+            let localSchedulerNodes = network.nodes.filter {
+                !$0.isLocalProvisioner && !$0.isProvisioner && $0.subNetworkId == self.meshNetworkId
+            }
             
             
             network.nodes.filter({ !$0.isLocalProvisioner }).forEach { node in
@@ -2696,7 +2700,10 @@ extension SpaceData {
                         }
                     }
                     
-                    guard node.restoreSchedulerModelSnapshot(nodeData: nodeDict) else { return nil }
+                    let localSchedulerNode = timedVersion >= 3
+                        ? localSchedulerNodes.first { $0.uuid == node.uuid } : nil
+                    guard node.restoreSchedulerModelSnapshot(nodeData: nodeDict,
+                        preservingLocalObservationFrom: localSchedulerNode) else { return nil }
                     return node
                 }
                 return nil

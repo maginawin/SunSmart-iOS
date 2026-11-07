@@ -1,5 +1,5 @@
 // The queue/air boundary is controlled. Status bytes, SDK cache observation,
-// Proxy completion/reset, App binding results and Schedule SQLite are real code.
+// Proxy completion/reset, App binding results, SDK property codecs and Schedule SQLite are real code.
 typealias StaticMeshMessage = StaticMeshResponse
 typealias MessageCommandProgressCallback = (Int, Int) -> Void
 typealias MessageCommandSuccessfulCallback = (MeshMessageHandle, StaticMeshMessage) -> Void
@@ -225,6 +225,48 @@ extension Run {
             }
             print("PASS: Scheduler wire -> SDK observation -> Proxy reset -> App result -> SQLite: \(scenario)")
         }
+        // Exact field-log payload: Wednesday 08:00 Off, fade 38 seconds, slot 0.
+        TimedSchedulerTaskCoordinator.invalidateAll()
+        let original = Node(0x0010)
+        original.schedulerSetupModels[1].parentElement!.unicastAddress = 0x0012
+        original.allSchedulerModelEntrys = [:]
+        manager.realNodes = [original]; manager.groups = []
+        let timed = Schedule(id: 4200, name: "Entry", enabled: true, nodeAddresses: [0x0010], action: .off)
+        timed.weekDays = [.Wednesday]; timed.hour = 8; timed.minute = 0; timed.fadeTime = 38
+        timed.nodeSlots = [.init(identity: original.timedSchedulerIdentity!, slot: 0, state: .pendingApply, actionAddress: original.timedActionAddress())]
+        manager.schedules = [timed]
+        precondition(timed.save())
+        let handles = timed.getMessageHandles(node: original)
+        precondition(handles.count == 2)
+        precondition((handles.last!.message as! SchedulerActionSet).parameters!.hex == "40FE7F80008000660000")
+        proxy.begin(handles) { precondition(timed.applySchedulerResults($0, expected: handles, on: original)) }
+        for handle in handles { proxy.deliver((handle.message as! SchedulerActionSet).parameters!, to: handle, node: original) }
+        proxy.finish()
+        var current = original
+        for _ in 0..<3 {
+            // Equal-version v3 import creates new Node/Model objects without observations.
+            let replacement = Node(0x0010)
+            replacement.uuid = original.uuid
+            replacement.schedulerSetupModels[1].parentElement!.unicastAddress = 0x0012
+            replacement.allSchedulerModelEntrys = [:]
+            replacement.restoreLocalSchedulerObservation(from: current)
+            precondition(replacement.savePropertys())
+            // Discard memory and reload real SDK property bytes from SQLite.
+            replacement.allSchedulerModelEntrys = [:]
+            try replacement.reloadProperties()
+            let reloaded = Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
+                meshNetworkId: manager.currentNetworkKey.networkId.hex, scheduleId: timed.id).first!
+            manager.realNodes = [replacement]; manager.schedules = [reloaded]
+            precondition(reloaded.schedulerSyncDifference(on: replacement) == .synchronized)
+            precondition(reloaded.getMessageHandles(node: replacement).isEmpty, "re-entry must not resend successful Models")
+            current = replacement
+        }
+        let loaded = manager.schedules[0]
+        loaded.minute = 1
+        precondition(loaded.save())
+        precondition(loaded.needsSync(on: current), "new desired configuration still needs synchronization")
+        precondition(loaded.getMessageHandles(node: current).count == 1, "changed owner entry must not resend confirmed cleanup")
+        print("PASS: field-log ACK -> binding -> SQLite -> v3 Node replacement -> SDK reload -> zero tasks across three entries; changed intent still sends")
         TimedSchedulerTaskCoordinator.invalidateAll()
     }
 }

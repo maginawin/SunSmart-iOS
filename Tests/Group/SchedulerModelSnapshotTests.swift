@@ -21,6 +21,7 @@ final class Element {
 }
 final class Node {
     let uuid: UUID
+    var deviceKey: Data?
     let primaryUnicastAddress: UInt16
     let elements: [Element]
     var schedulerSetupModels: [Model] { elements.map(\.model) }
@@ -31,6 +32,7 @@ final class Node {
     var schedulerModelCacheDecodeError: String?
     init(_ data: [String: Any]) {
         uuid = UUID(uuidString: data["uuid"] as! String)!
+        deviceKey = (data["deviceKey"] as? String).map { Data($0.uppercased().utf8) }
         let address = UInt16(data["unicastAddress"] as! String, radix: 16)!
         primaryUnicastAddress = address
         elements = (data["elements"] as! [[String: Any]]).map {
@@ -100,6 +102,45 @@ final class Node {
                          "ignored server observations must not replace known local observations")
             precondition(SchedulerModelSnapshot.spaceData(remote) == SchedulerModelSnapshot.omittedComparison)
         }
+        // Space.update replaces Node instances even on an equal cloud timestamp.
+        // v3 normalization deliberately removes shared Scheduler observations.
+        let localJSON = original[2]
+        let local = Node(localJSON)
+        precondition(local.restoreSchedulerModelSnapshot(nodeData: localJSON))
+        let v3 = CloudConfigurationDefaults.space(["spaceData": ["timedSchemaVersion": 3], "schedules": [], "nodes": [localJSON]])
+        let incoming = (v3["nodes"] as! [[String: Any]])[0]
+        let replacement = Node(incoming)
+        precondition(replacement.restoreSchedulerModelSnapshot(nodeData: incoming, preservingLocalObservationFrom: local))
+        precondition(replacement.allSchedulerModelEntrys.count == 2,
+                     "Space re-entry must retain acknowledged owner and known-empty cleanup Model")
+        let saved = replacement.saveSnapshotProperty()
+        let restarted = Node(incoming)
+        restarted.loadSnapshotProperty(saved)
+        precondition(restarted.allSchedulerModelEntrys.count == 2)
+        precondition(restarted.allSchedulerModelEntrys[restarted.schedulerSetupModels[0]]?.count == 2)
+        precondition(restarted.allSchedulerModelEntrys[restarted.schedulerSetupModels[1]]?.isEmpty == true)
+        precondition(Set(local.allSchedulerModelEntrys.keys).isDisjoint(with: replacement.allSchedulerModelEntrys.keys))
+        for field in ["uuid", "unicastAddress", "deviceKey", "elements"] {
+            var changed = incoming
+            switch field {
+            case "uuid": changed[field] = UUID().uuidString
+            case "unicastAddress": changed[field] = "6000"
+            case "deviceKey": changed[field] = String(repeating: "B2", count: 16)
+            default: changed[field] = Array((incoming[field] as! [[String: Any]]).prefix(1))
+            }
+            let other = Node(changed)
+            precondition(other.restoreSchedulerModelSnapshot(nodeData: changed, preservingLocalObservationFrom: local))
+            precondition(other.allSchedulerModelEntrys.isEmpty, "must reject changed identity/topology: \(field)")
+        }
+        local.allSchedulerModelEntrys.removeValue(forKey: local.schedulerSetupModels[1])
+        let partialReplacement = Node(incoming)
+        precondition(partialReplacement.restoreSchedulerModelSnapshot(nodeData: incoming, preservingLocalObservationFrom: local))
+        precondition(partialReplacement.allSchedulerModelEntrys.count == 1, "unknown Model must stay unknown")
+        local.schedulerModelCacheDecodeError = "fixture"
+        let corrupt = Node(incoming)
+        precondition(corrupt.restoreSchedulerModelSnapshot(nodeData: incoming, preservingLocalObservationFrom: local))
+        precondition(corrupt.allSchedulerModelEntrys.isEmpty, "corrupt observations must not migrate")
+        print("PASS: v3 Node replacement and SDK property reload retain observations; identity/topology changes and corrupt/unknown Models stay guarded")
         print("PASS: v3 legacy observations never reach restore; unknown and known local caches remain unchanged")
         precondition(SchedulerModelSnapshot.spaceData(payload) == SchedulerModelSnapshot.spaceData(["nodes": original]))
         var knownEmpty = 0, populated = 0

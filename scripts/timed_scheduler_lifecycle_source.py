@@ -1,8 +1,9 @@
 """Join production Scheduler wire/cache/completion code to the SQLite fixture.
 
-BLE, UIKit, Node property storage and queue admission are controlled boundaries.
+BLE, UIKit, Node/Model identity, the property table and queue admission are controlled boundaries.
 The packet codec, observation ownership, Node ACK application, Proxy completion,
-App result/binding coordinator and Schedule SQLite persistence are production code.
+App result/binding coordinator, SDK property serialization and Schedule SQLite persistence
+are production code. Property bytes also round-trip through a fixture SQLite table.
 """
 from check_scene_configuration import function
 
@@ -84,6 +85,34 @@ extension Node {
     }
 }
 '''
+    # Join actual SDK property serialization to SQLite instead of an always-true save.
+    database = (lib / 'MeshDatabase.swift').read_text()
+    saving = database[database.index('        var modelSchedulerContainers:'):database.index('        let lightLCPropertysData', database.index('        var modelSchedulerContainers:'))]
+    loading_start = database.index('                switch SchedulerModelCachePersistence.decode(schedulersData)')
+    loading = database[loading_start:database.index('\n            }\n            \n            if let data = row[PropertyExpressionKey.lightLCPropertys]', loading_start)]
+    source = source.replace('    let uuid = UUID()', '    var uuid = UUID()')
+    source = source.replace('    var propertiesSaveSucceeds = true', '    var propertiesSaveSucceeds = true\n    var corruptedSchedulerModelActionsData: Data?\n    var schedulerModelCacheDecodeError: String?')
+    source = source.replace('    @discardableResult func savePropertys() -> Bool { propertiesSaveSucceeds }', '''
+    @discardableResult func savePropertys() -> Bool {
+        guard propertiesSaveSucceeds else { return false }
+        do {
+            let data = saveSnapshotProperty()
+            try SunSmartDataManager.shared.db!.run("INSERT OR REPLACE INTO fixture_node_properties VALUES (?, ?)", uuid.uuidString, Blob(bytes: Array(data)))
+            return true
+        } catch { return false }
+    }
+    func reloadProperties() throws {
+        let blob = try SunSmartDataManager.shared.db!.scalar("SELECT cache FROM fixture_node_properties WHERE uuid = ?", uuid.uuidString) as! Blob
+        loadSnapshotProperty(Data(blob.bytes))
+    }
+''')
+    source = source.replace('        Schedule.initDatabase()', '        Schedule.initDatabase()\n        try SunSmartDataManager.shared.db!.execute("CREATE TABLE fixture_node_properties (uuid TEXT PRIMARY KEY, cache BLOB)")')
+    source += '\n' + (lib / 'Node/SchedulerModelCachePersistence.swift').read_text()
+    source += '\nextension Node {\nfunc saveSnapshotProperty() -> Data {\n' + saving + '\nreturn allSchedulersData!\n}\nfunc loadSnapshotProperty(_ schedulersData: Data) {\n' + loading + '\n}\n'
+    source += '''func element(withAddress address: UInt16) -> Element? { elements.first { $0.unicastAddress == address } }
+'''
+    exports = (root / 'SunSmart/Common/Data/ExportData.swift').read_text()
+    source += function(exports, '    func restoreLocalSchedulerObservation(') + '\n}\n'
     fixture = (root / 'Tests/Timed/TimedSchedulerLifecycleTests.swift').read_text()
     fixture = fixture.replace('// PRODUCTION_SUBMISSION', function(proxy, '    private final class Submission'))
     fixture = fixture.replace('// PRODUCTION_COMPLETION', '\n'.join(function(proxy, marker) for marker in [

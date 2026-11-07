@@ -1396,9 +1396,12 @@ extension Node {
     }
 
     /// Called on the newly decoded Node before the existing database save.
-    func restoreSchedulerModelSnapshot(nodeData: [String: Any]) -> Bool {
+    func restoreSchedulerModelSnapshot(nodeData: [String: Any], preservingLocalObservationFrom localNode: Node? = nil) -> Bool {
         do {
-            guard let snapshot = try SchedulerModelSnapshot.decode(node: nodeData) else { return true }
+            guard let snapshot = try SchedulerModelSnapshot.decode(node: nodeData) else {
+                if let localNode { restoreLocalSchedulerObservation(from: localNode) }
+                return true
+            }
             var restored: [Model: [Int: SchedulerRegistryEntry]] = [:]
             func entries(_ data: Data) throws -> [Int: SchedulerRegistryEntry] {
                 var result: [Int: SchedulerRegistryEntry] = [:]
@@ -1421,6 +1424,35 @@ extension Node {
             scheduleIds = legacy.keys.sorted()
             return true
         } catch { return false }
+    }
+
+    /// v3 shares desired configuration, not physical observations. Import creates
+    /// new Models; retain this phone's observations only for the same device and
+    /// Scheduler topology, remapping the cache to those new Model instances.
+    func restoreLocalSchedulerObservation(from local: Node) {
+        guard uuid == local.uuid, primaryUnicastAddress == local.primaryUnicastAddress,
+              let key = deviceKey, key == local.deviceKey,
+              local.corruptedSchedulerModelActionsData == nil,
+              local.schedulerModelCacheDecodeError == nil else { return }
+        let supported = schedulerSetupModels, previous = local.schedulerSetupModels
+        let addresses = supported.compactMap { $0.parentElement?.unicastAddress }
+        let previousAddresses = previous.compactMap { $0.parentElement?.unicastAddress }
+        guard addresses.count == supported.count, previousAddresses.count == previous.count,
+              Set(addresses).count == supported.count,
+              Set(previousAddresses).count == previous.count,
+              Set(addresses) == Set(previousAddresses),
+              local.allSchedulerModelEntrys.keys.allSatisfy({ previous.contains($0) }) else { return }
+        var restored: [Model: [Int: SchedulerRegistryEntry]] = [:]
+        for model in supported {
+            guard let old = previous.first(where: {
+                $0.parentElement?.unicastAddress == model.parentElement?.unicastAddress
+            }) else { return }
+            // Missing means unknown; a present empty dictionary means confirmed clear.
+            if let entries = local.allSchedulerModelEntrys[old] { restored[model] = entries }
+        }
+        allSchedulerModelEntrys = restored
+        schedulerActions = local.schedulerActions
+        scheduleIds = local.scheduleIds
     }
 
     func matchesSchedulerModelSnapshot(nodeData: [String: Any]) -> Bool {
