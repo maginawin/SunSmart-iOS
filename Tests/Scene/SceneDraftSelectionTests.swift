@@ -213,6 +213,7 @@ import Foundation
         busyPage.busy = true; let busyLifecycle = busyPage.lifecycle; busyPage.closeAction()
         check("dirtyBusyCloseCancelsBeforeConfirmation", busyPage.alerts == 1 && !busyPage.busy && busyPage.lifecycle != busyLifecycle && busyPage.coordinator.cancellations == 1)
         try runSceneDeviceParameterEditingTests()
+        try runSceneGroupParameterEditingTests()
         print("selection: \(passed) passed")
     }
 }

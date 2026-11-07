@@ -120,7 +120,10 @@ def run(suite):
             editing = editing.replace('// PRODUCTION_SUMMARY', function(
                 (ROOT / 'SunSmart/Main/Scene/View/SceneDevicesSelectionView.swift').read_text(), '    static func summary('))
             editing = editing.replace('// PRODUCTION_EDIT_DEVICES', '\n'.join(function(selection_source, marker).replace('private func', 'func') for marker in [
-                '    private func editDevices(', '    private func accepts(']))
+                '    private func editDevices(', '    private func editGroup(', '    private func accepts(']))
+            mesh = (ROOT / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
+            editing = editing.replace('// PRODUCTION_GROUP_CAPABILITIES', '\n'.join(function(mesh, marker) for marker in [
+                '    var effectiveSupportCct:', '    var effectiveCctRange:', '    func effectiveCctRange(members:', '    func clampEffectiveCct(']))
             sdk_node = (ROOT / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Propertys.swift').read_text()
             editing = editing.replace('// SDK_CONTROL_PAGE', function(sdk_node, 'public enum NodeChangeControlPage:'))
             editing = editing.replace('// SDK_NODE_PROPERTIES', '\n'.join(function(sdk_node, marker) for marker in [
@@ -210,6 +213,7 @@ def run(suite):
             if '    func completeGroupSceneRemoval(' in mesh:
                 lifecycle_source += function(mesh, '    @discardableResult\n    func completeGroupSceneRemoval(')
             lifecycle_source += '\n}\nextension Scene {\n'
+            lifecycle_source += function((ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text(), '    func getSyncMessageHandles(node:') + '\n'
             lifecycle_source += function((ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text(), '    func getDeleteMessageHandles(node:') + '\n}\n'
             lifecycle_source += 'struct SchedulerContextBoundary { func matches(node: Node) -> Bool { true } }\nextension MeshMessageHandle { var timedSchedulerContext: SchedulerContextBoundary? { nil }; var schedulerTask: MeshSchedulerTask? { nil } }\n'
             lifecycle_source += '\nextension SceneCapacity {\n' + function((ROOT / 'SunSmart/Common/Data/SceneCapacity.swift').read_text(), '    static func readUnknownState(') + '\n}\n'

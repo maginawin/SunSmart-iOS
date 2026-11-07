@@ -115,10 +115,73 @@ import SQLite3
         try offlineMemberPartialStoreReload()
         try offlineSaveAdmission()
         sceneRegisterReadBoundary()
+        try emptyGroupPresetMemberJoin()
         print("PASS coordinator: preview, DONE, stale confirmation, membership, stop, cancel and projection retry")
     }
 }
 func tryValue<T>(_ value: () throws -> T) -> T { try! value() }
+
+// Scene intent uses production SQLite; Group storage and SDK cache are fixture
+// boundaries. The actual SDK Group codec is covered by roundtrip-group.
+func emptyGroupPresetMemberJoin() throws {
+    let path = CommandLine.arguments[1] + ".empty-group-cct"
+    SunSmartDataManager.shared.db = try Connection(path)
+    let manager = MeshNetworkManager.instance
+    manager.scenes = []; manager.schedules = []; manager.realNodes = []; manager.currentNetworkKey.networkId = 1
+    SpaceData.value = SpaceData(); SpaceViewController.active = nil
+    SpaceConfigurationSafety.recovery = FixtureRecoveryState()
+    EmergencyFireControllerSceneEventManager.blocked = []
+    Scene.sdkSaveFails = false; GroupInfo.savingSucceeds = true
+    let originalGroup = Group(0xC040); manager.groups = [originalGroup]
+    let scope = SceneScope(meshUUID: manager.meshNetwork!.uuid.uuidString, networkID: "0001")
+    let preset = SceneParameters(isOn: true, lightness: 26214, cct: 4000)
+    let draft = try SceneDraft(scope: scope, name: "Future members", imageId: 0, kind: .groups,
+        groupParameters: [originalGroup.address.address: preset])
+    guard case .ready(let saved) = try SceneConfigurationStore().commit(draft: draft, expectedRevision: draft.revision) else { fatalError() }
+    precondition(saved.info.configuration!.pendingOperations.isEmpty, "empty group has no device writes")
+
+    SunSmartDataManager.shared.db = try Connection(path)
+    let group = Group(originalGroup.address.address)
+    let stored = try SunSmartDataManager.shared.db!.scalar("SELECT value FROM fixture_group_scene WHERE id = ?", Int(group.address.address)) as! Blob
+    group.info.sceneExecuteDatas = try JSONDecoder().decode([SceneExecuteData].self, from: Data(stored.bytes))
+    let scene = Scene(saved.number)
+    scene.info = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number)!
+    manager.groups = [group]; manager.scenes = [scene]
+    precondition(tryValue { try SceneDraft(scene: scene).groupParameters[group.address.address] } == preset,
+                 "empty-group brightness and CCT survive storage and reconstruction")
+
+    let dimmer = Node(21), tunable = Node(22)
+    dimmer.effectiveSupportCct = false; tunable.effectiveCctRange = 4500...6500
+    manager.realNodes = [dimmer, tunable]
+    for node in manager.realNodes {
+        node.sceneSetupModel!.parentElement!.observedSceneRegister = []
+        node.restoreData = .init(addGroupAddress: group.address.address)
+        precondition(node.getNodeSyncSceneDatas(group: group).count == 1, "new member is planned before subscription")
+    }
+    manager.realNodes.forEach { $0.group = group; $0.restoreData = nil }
+    func handles(_ node: Node) -> [MeshMessageHandle] {
+        let tasks = node.getNodeSyncSceneDatas(group: group)
+        precondition(tasks.count == 1, "each unsynchronized member has one Scene task")
+        let result = scene.getSyncMessageHandles(node: node, data: tasks[0].data)
+        precondition(result.count == 2 && result.last!.message is SceneStore)
+        return result
+    }
+    let dimmerHandles = handles(dimmer), cctHandles = handles(tunable)
+    precondition((dimmerHandles[0].message as? LightLightnessSet)?.lightness == preset.lightness,
+                 "real dimmer uses brightness even though group stores CCT")
+    precondition((cctHandles[0].message as? LightCTLSet)?.temperature == 4500,
+                 "new CCT member clamps the stored preset to its own range")
+    precondition(dimmer.applyMessageHandle(dimmerHandles.last!))
+    precondition(!tunable.applyMessageHandle(cctHandles.last!, isSuccess: false))
+    SunSmartDataManager.shared.db = try Connection(path)
+    scene.info = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number)!
+    manager.realNodes.forEach { $0.sceneExecuteDatas = $0.persistedSceneExecuteDatas }
+    precondition(dimmer.getNodeSyncSceneDatas(group: group).isEmpty, "successful member is not resent after reentry")
+    precondition(tunable.applyMessageHandle(handles(tunable).last!), "failed member remains retryable after reentry")
+    precondition(manager.realNodes.allSatisfy { $0.getNodeSyncSceneDatas(group: group).isEmpty })
+    precondition(group.info.sceneExecuteDatas[0].cct == 4000, "device clamping never changes the group preset")
+    print("PASS empty Group preset: SQLite reload, pending join, dimmer/CTL routing, per-node range, partial failure and retry")
+}
 
 // Actual Store result application, Scene SQLite storage and sync-read selection.
 // Radio/Session ordering is covered separately; the Node cache remains a fixture.

@@ -14,6 +14,15 @@ final class Node {
     var effectiveCctRange = NodeAbsoluteCctRange.defaultRange
     // SDK_NODE_PROPERTIES
 }
+final class Group {
+    struct Address { let address: UInt16 = 0xC001 }
+    struct LightControlData { var highEndTrim = 100 }
+    struct Profile { var lightControlData = LightControlData() }
+    struct Info { var profile = Profile() }
+    let address = Address()
+    var info = Info(), nodes: [Node] = []
+    // PRODUCTION_GROUP_CAPABILITIES
+}
 extension SceneParameters {
     // PRODUCTION_RESOLVE
 }
@@ -85,6 +94,7 @@ final class SceneDeviceParameterEditingHarness {
     var selection: SceneDraftSelection?, picker: SceneExecuteDataPickerView?, alert: SRAlertView?
     var viewIfLoaded: EditingView? = EditingView()
     var lifecycle = UUID(), busy = false, active = true, changes = 0
+    var groupPreviewGeneration = UUID(), enablesGroupLiveControl = false
     var relayLiveControl: SceneRelayLiveControl?
     init(_ members: [SceneDeviceMember], nodes: [TimedSchedulerNodeIdentity: Node]) throws {
         selection = SceneDraftSelection(draft: try SceneDraft(scope: .init(meshUUID: "mesh", networkID: "net"), name: "Scene", imageId: 1,
@@ -92,6 +102,8 @@ final class SceneDeviceParameterEditingHarness {
         devicesView.nodes = nodes
     }
     func stopDeviceLiveControl() {}
+    func stopGroupPreview() { groupPreviewGeneration = UUID() }
+    func handleGroupLiveControl(_ event: SceneExecuteDataPickerView.LiveEvent, group: Group) {}
     func makeDeviceLiveControl(_ target: SceneDeviceSettingsTarget) -> ((SceneExecuteDataPickerView.LiveEvent) -> Void)? { nil }
     func draftChanged() { changes += 1 }
     func failed(_ error: Error) { preconditionFailure("Unexpected edit failure: \(error)") }
@@ -203,4 +215,39 @@ func runSceneDeviceParameterEditingTests() throws {
     check(SceneDevicesSelectionView.summary(off, node: node) == "OFF", "off row remains OFF")
     check(SceneDevicesSelectionView.summary(on, node: nil) == "ON", "missing device retains existing summary fallback")
     print("device parameter editing: \(checks) passed")
+}
+
+func runSceneGroupParameterEditingTests() throws {
+    var checks = 0
+    func check(_ value: @autoclosure () -> Bool, _ message: String) { precondition(value(), message); checks += 1 }
+    let dimmer = Node(); dimmer.rawSupportCct = false
+    let singleWhite = Node(); singleWhite.changeControlPage = .singleWhite
+    let tunable = Node(); tunable.effectiveCctRange = 3000...6000
+    for members in [[], [dimmer], [singleWhite], [dimmer, tunable]] {
+        let group = Group(); group.nodes = members
+        let page = try SceneDeviceParameterEditingHarness([], nodes: [:])
+        page.selection = SceneDraftSelection(draft: try SceneDraft(scope: .init(meshUUID: "mesh", networkID: "net"),
+            name: "Group preset", imageId: 1, kind: .groups))
+        page.editGroup(group)
+        let sheet = page.picker!
+        check(sheet.showCct && sheet.cctSliderView != nil, "every group can configure future members' CCT")
+        check(sheet.lightnessSliderView.value == 100 && sheet.selectedCct == 4500, "existing defaults remain visible")
+        check(sheet.cctRange == group.effectiveCctRange, "existing member range or empty-group fallback is retained")
+        sheet.lightnessSliderView.value = 40; sheet.cctSliderView.value = 4000
+        sheet.shadeViewAction()
+        let saved = page.selection!.draft.groupParameters[group.address.address]!
+        check(saved == .init(isOn: true, lightness: Node.getLightness(lightness100: 40), cct: 4000), "closing stores both preset values")
+        page.editGroup(group)
+        check(page.picker!.showCct && page.picker!.selectedCct == 4000 && page.picker!.lightnessSliderView.value == 40,
+              "reopening the shared create/settings editor retains the preset")
+        page.picker!.shadeViewAction()
+        check(page.selection!.draft.groupParameters[group.address.address] == saved, "unchanged popup preserves exact stored values")
+        group.info.profile.lightControlData.highEndTrim = 30
+        page.editGroup(group)
+        check(page.picker!.lightnessSliderView.value == 30, "group brightness limit still applies")
+        let late = page.picker!.pickerCallback!
+        page.lifecycle = UUID(); late(true, 20, 5000)
+        check(page.selection!.draft.groupParameters[group.address.address] == saved, "departed editor rejects late group changes")
+    }
+    print("group parameter editing: \(checks) passed")
 }

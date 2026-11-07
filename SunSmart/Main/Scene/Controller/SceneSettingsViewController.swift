@@ -362,9 +362,10 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
         let current = selection.draft.groupParameters[group.address.address] ?? selection.draft.sourceGroupParameters[group.address.address]
         let initialBrightness = current.map { Node.getLightness100(lightness: $0.lightness) } ?? 100
         let revision = selection.draft.revision, token = lifecycle
+        // Keep CCT configurable for future members, including when the group is empty.
         picker = SceneExecuteDataPickerView.show(lightness: current.map { Node.getLightness100(lightness: $0.lightness) } ?? 100,
             isOn: current?.isOn ?? true, cct: Int(current?.cct ?? 4500), lightnessLimitRange: 0...group.info.profile.lightControlData.highEndTrim,
-            cctRange: group.effectiveCctRange, showCct: group.effectiveSupportCct, showDelete: false, liveControl: liveControl) { [weak self] on, brightness, cct in
+            cctRange: group.effectiveCctRange, showCct: true, showDelete: false, liveControl: liveControl) { [weak self] on, brightness, cct in
                 guard let self, self.accepts(token, revision: revision), self.coordinator.committedNumber == nil else { return }
                 var values = selection.draft.groupParameters
                 let rawBrightness = current.flatMap { value in

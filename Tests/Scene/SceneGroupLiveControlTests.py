@@ -123,6 +123,12 @@ expect(MeshGroupControlSession.sent.last?.address == group.address.address, "tar
 settings.handleGroupLiveControl(.temperature(7000, ended: false), group: group)
 let cct = MeshGroupControlSession.sent.last?.message as? LightCTLTemperatureSetUnacknowledged
 expect(cct?.temperature == 6500 && cct?.deltaUV == 0 && MeshGroupControlSession.sent.last?.final == false, "CCT clamps and preserves sample phase")
+let beforeUnsupportedCct = MeshGroupControlSession.sent.count
+group.effectiveSupportCct = false
+settings.handleGroupLiveControl(.temperature(4000, ended: false), group: group)
+settings.handleGroupLiveControl(.temperature(4000, ended: true), group: group)
+expect(MeshGroupControlSession.sent.count == beforeUnsupportedCct, "empty/dimming-only group does not send CCT samples or final values")
+group.effectiveSupportCct = true
 settings.handleGroupLiveControl(.off, group: group)
 expect((MeshGroupControlSession.sent.last?.message as? GenericOnOffSetUnacknowledged)?.isOn == false && MeshGroupControlSession.sent.last?.all == true, "OFF clears both channels and sends false")
 let offOwner = settings.groupPreview!
